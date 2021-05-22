@@ -121,10 +121,9 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				InputStream stream = provider.getInputStream(0x4000 * i);
 				Address address = program.getAddressFactory().getDefaultAddressSpace().getAddress(0x8000);;
 				// long size = 0x4000;
-				// FileBytes fileBytes = 
-				// program.getMemory().createInitializedBlock("bank_"+i, address, fileBytes, offset, size, true);
 				long length = 0x4000;// Banks are 16 KB
-				block = program.getMemory().createInitializedBlock(String.format("bank_%01d",i), address, stream, length, monitor, true);
+				boolean overlay = true;
+				block = program.getMemory().createInitializedBlock(String.format("bank_%02d",i), address, stream, length, monitor, overlay);
 				block.setRead(true);
 				block.setWrite(false);
 				block.setExecute(true);
