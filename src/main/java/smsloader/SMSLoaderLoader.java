@@ -16,6 +16,7 @@
 package smsloader;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 import ghidra.app.util.Option;
@@ -32,6 +33,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.flatapi.FlatProgramAPI;
 
 /**
  * TODO: Provide class-level documentation that describes what this loader does.
@@ -98,8 +100,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			block.setRead(true);
 			block.setWrite(false);
 			block.setExecute(true);
-			
-			// TODO: I have no clue how to handle mapping carts???
+
 			long maxLen = provider.length();
 			if(maxLen > 0xc000)	{
 				maxLen = 0xc000;
@@ -113,6 +114,27 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			AddressSet addrSet = new AddressSet(addr); // TODO: no clue how AddressSet works
 			program.getFunctionManager().createFunction("Start", addr, addrSet, SourceType.IMPORTED);
 						
+			FlatProgramAPI api = new FlatProgramAPI(program, monitor);
+			
+			// https://www.smspower.org/Development/Mappers?from=Development.Mapper
+			for(int i=/*0*/2; i < 32; i++){
+				InputStream stream = provider.getInputStream(0x4000 * i);
+				Address address = program.getAddressFactory().getDefaultAddressSpace().getAddress(0x8000);;
+				// long size = 0x4000;
+				// FileBytes fileBytes = 
+				// program.getMemory().createInitializedBlock("bank_"+i, address, fileBytes, offset, size, true);
+				long length = 0x4000;// Banks are 16 KB
+				block = program.getMemory().createInitializedBlock(String.format("bank_%01d",i), address, stream, length, monitor, true);
+				block.setRead(true);
+				block.setWrite(false);
+				block.setExecute(true);
+			}
+
+			api.createLabel(program.getAddressFactory().getDefaultAddressSpace().getAddress(0xfffc), "RamMappingControl", true);
+			api.createLabel(program.getAddressFactory().getDefaultAddressSpace().getAddress(0xfffd), "BankSelect0", true);
+			api.createLabel(program.getAddressFactory().getDefaultAddressSpace().getAddress(0xfffe), "BankSelect1", true);
+			api.createLabel(program.getAddressFactory().getDefaultAddressSpace().getAddress(0xffff), "BankSelect2", true);
+
 			// 0xc000 - 0xdfff: RAM
 			addr = program.getAddressFactory().getDefaultAddressSpace().getAddress(0xc000);
 			block = program.getMemory().createInitializedBlock("System RAM", addr, 0x2000, (byte)0x00, monitor, false);
@@ -127,6 +149,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			block.setWrite(true);
 			block.setExecute(false);
 			
+			// TODO: additional labels and IO registers from https://github.com/zznop/ghidra_scripts/blob/master/GenesisVectorTable.java
 		}catch(Exception e) {
 			log.appendException(e);
 		}
