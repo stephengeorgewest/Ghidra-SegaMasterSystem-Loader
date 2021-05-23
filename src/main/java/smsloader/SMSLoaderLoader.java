@@ -33,6 +33,11 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSpace;
+import ghidra.program.model.data.ArrayDataType;
+import ghidra.program.model.data.ByteDataType;
+import ghidra.program.model.data.DataUtilities;
+import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
@@ -123,17 +128,21 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			
 			// https://www.smspower.org/Development/Mappers?from=Development.Mapper
 			// TODO: check size program
-			for(int i=/*0*/2; i < 32; i++){
+			int bank_count = 32;
+			EnumDataType bank_enum = new EnumDataType("BankNumber", 1/*(int)Math.ceil(Math.log(bank_count)/Math.log(2))*//*1,2,4,8*/);
+			for(int i=/*0*/2; i < bank_count; i++){
+				String bank_string = String.format("bank_%02d",i);
+				bank_enum.add(bank_string, i);
 				InputStream stream = provider.getInputStream(0x4000 * i);
 				Address address = ram.getAddress(0x8000);;
 				long length = 0x4000;// Banks are 16 KB
 				boolean overlay = true;
-				MemoryBlock bank_block = memory.createInitializedBlock(String.format("bank_%02d",i), address, stream, length, monitor, overlay);
+				MemoryBlock bank_block = memory.createInitializedBlock(bank_string, address, stream, length, monitor, overlay);
 				bank_block.setRead(true);
 				bank_block.setWrite(false);
 				bank_block.setExecute(true);
 			}
-
+			
 			// 0xc000 - 0xdfff: RAM
 			addr = ram.getAddress(0xc000);
 			MemoryBlock ram_block = memory.createUninitializedBlock("System RAM", addr, 0x2000, false);
@@ -174,11 +183,44 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			"program", false/*R*/, true/*W*/, false/*X*/, log);
 
 			api.createLabel(ram.getAddress(0xfffc), "ControlRegister", true);
-			api.createLabel(ram.getAddress(0xfffd), "BankSelect0", true);
-			api.createLabel(ram.getAddress(0xfffe), "BankSelect1", true);
-			api.createLabel(ram.getAddress(0xffff), "BankSelect2", true);
+			StructureDataType control_register_type = new StructureDataType("ControlRegisterType", 0);
+			control_register_type.addBitField(new ByteDataType(), 2, "Bank shift", "");
+			control_register_type.insertBitField(0,1,2, new ByteDataType(), 1, "RAM bank select", "");
+			control_register_type.insertBitField(0,1,3, new ByteDataType(), 1, "RAM enable ($8000-$bfff)", "");
+			control_register_type.insertBitField(0,1,4, new ByteDataType(), 1, "RAM enable ($c000-$ffff)", "");
+			control_register_type.insertBitField(0,1,5, new ByteDataType(), 2, "Unused", "");
+			control_register_type.insertBitField(0,1,7, new ByteDataType(),1, "'ROM write' enable", "");
 			
+			ArrayDataType bank_controls = new ArrayDataType(bank_enum,3,1);
+			api.createLabel(ram.getAddress(0xfffd), "BankSelect", true);
+			DataUtilities.createData(program, ram.getAddress(0xfffd), bank_controls, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			/*
+			Adding BankSelect as an array to control_register_type leads to:
 
+			ControlRegister._0_1_ = 0x80;
+			ControlRegister.BankSelect[0] = 0;
+			ControlRegister.BankSelect[1] = 1;
+			ControlRegister.BankSelect[2] = bank_02;
+			*/
+			/*control_register_type.add(bank_controls,"BankSelect","");
+			DataUtilities.createData(program, ram.getAddress(0xfffc), control_register_type, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			*/
+			/*
+			Adding BankSelect indivitually leads to:
+
+			ControlRegister = 0x80;
+			BankSelect0 = 0;
+			BankSelect1 = 1;
+			BankSelect2 = bank_02;
+			*//*
+			api.createLabel(ram.getAddress(0xfffd), "BankSelect0", true);
+			DataUtilities.createData(program, ram.getAddress(0xfffd), bank_enum, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			api.createLabel(ram.getAddress(0xfffe), "BankSelect1", true);
+			DataUtilities.createData(program, ram.getAddress(0xfffe), bank_enum, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			api.createLabel(ram.getAddress(0xffff), "BankSelect2", true);
+			DataUtilities.createData(program, ram.getAddress(0xffff), bank_enum, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			*/
+			
 			AddressSpace[] a = program.getAddressFactory().getAllAddressSpaces();
 			/*for(int i= 0; i < a.length; i++){
 				log.appendMsg("space " + i + ": " + a[i].getName());
