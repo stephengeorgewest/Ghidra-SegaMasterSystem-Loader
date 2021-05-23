@@ -34,6 +34,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.flatapi.FlatProgramAPI;
 
@@ -96,12 +97,14 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 		
 		try {			
 			AddressSpace ram = program.getAddressFactory().getDefaultAddressSpace();
+			Memory memory = program.getMemory();
+			
 			// 0x0000 - 0xbfff: ROM
 			Address addr = ram.getAddress(0x0);
-			MemoryBlock block = program.getMemory().createInitializedBlock("ROM", addr, 0xC000, (byte)0x00, monitor, false);
-			block.setRead(true);
-			block.setWrite(false);
-			block.setExecute(true);
+			MemoryBlock rom_block = memory.createInitializedBlock("ROM", addr, 0xC000, (byte)0x00, monitor, false);
+			rom_block.setRead(true);
+			rom_block.setWrite(false);
+			rom_block.setExecute(true);
 
 			long maxLen = provider.length();
 			if(maxLen > 0xc000)	{
@@ -110,7 +113,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			
 			// read the ROM bytes and attach them to the Ghidra program
 			byte romBytes[] = provider.readBytes(0, maxLen);			
-			program.getMemory().setBytes(addr, romBytes);
+			memory.setBytes(addr, romBytes);
 			
 			// execution starts at byte 0
 			AddressSet addrSet = new AddressSet(addr); // TODO: no clue how AddressSet works
@@ -119,34 +122,35 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			FlatProgramAPI api = new FlatProgramAPI(program, monitor);
 			
 			// https://www.smspower.org/Development/Mappers?from=Development.Mapper
+			// TODO: check size program
 			for(int i=/*0*/2; i < 32; i++){
 				InputStream stream = provider.getInputStream(0x4000 * i);
 				Address address = ram.getAddress(0x8000);;
 				long length = 0x4000;// Banks are 16 KB
 				boolean overlay = true;
-				block = program.getMemory().createInitializedBlock(String.format("bank_%02d",i), address, stream, length, monitor, overlay);
-				block.setRead(true);
-				block.setWrite(false);
-				block.setExecute(true);
+				MemoryBlock bank_block = memory.createInitializedBlock(String.format("bank_%02d",i), address, stream, length, monitor, overlay);
+				bank_block.setRead(true);
+				bank_block.setWrite(false);
+				bank_block.setExecute(true);
 			}
 
 			// 0xc000 - 0xdfff: RAM
 			addr = ram.getAddress(0xc000);
-			block = program.getMemory().createInitializedBlock("System RAM", addr, 0x2000, (byte)0x00, monitor, false);
-			block.setRead(true);
-			block.setWrite(true);
-			block.setExecute(false);
+			MemoryBlock ram_block = memory.createUninitializedBlock("System RAM", addr, 0x2000, false);
+			ram_block.setRead(true);
+			ram_block.setWrite(true);
+			ram_block.setExecute(false);
 			
 			// 0xe000 - 0xfffb: RAM Mirror, TODO: no clue how to tell Ghidra that this is a mirror
 			// https://github.com/NationalSecurityAgency/ghidra/issues/1956
 			addr = ram.getAddress(0xe000);
-			block = program.getMemory().createInitializedBlock("System RAM (Mirror)", addr, 0x1ffc, (byte)0x00, monitor, false);
-			block.setRead(true);
-			block.setWrite(true);
-			block.setExecute(false);
+			MemoryBlock ram_mirror_block = memory.createUninitializedBlock("System RAM (Mirror)", addr, 0x1ffc, false);
+			ram_mirror_block.setRead(true);
+			ram_mirror_block.setWrite(true);
+			ram_mirror_block.setExecute(false);
 			
 			String newLine = System.getProperty("line.separator");
-			block = MemoryBlockUtils.createUninitializedBlock(
+			MemoryBlockUtils.createUninitializedBlock(
 				program,
 				false,/* Overlay */
 				"RomBankControl",
