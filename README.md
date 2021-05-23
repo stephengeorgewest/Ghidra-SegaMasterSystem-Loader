@@ -6,7 +6,6 @@ A simple (WIP) loader for Ghidra for Sega Master System and Game Gear files. Cur
 - start disassembly/decompilation at byte 0
 
 Missing:
-- support for ROM mapping
 - specifying RAM as mirrored from another section of RAM
 
 ## Screenshots
