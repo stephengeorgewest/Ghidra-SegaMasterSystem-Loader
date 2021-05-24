@@ -37,7 +37,9 @@ import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.ByteDataType;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
+import ghidra.program.model.data.WordDataType;
 import ghidra.program.model.lang.LanguageCompilerSpecPair;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
@@ -125,6 +127,16 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			program.getFunctionManager().createFunction("Start", addr, addrSet, SourceType.IMPORTED);
 						
 			FlatProgramAPI api = new FlatProgramAPI(program, monitor);
+
+			api.createLabel(ram.getAddress(0x7ff0), "Header", true);
+			StructureDataType rom_header = new StructureDataType("RomHeader", 0);
+			rom_header.add(new StringDataType(), 8, "TMR SEGA", "");
+			rom_header.add(new WordDataType(), 2, "Reserved", "");
+			rom_header.add(new WordDataType(), 2, "Checksum", "");
+			rom_header.add(new WordDataType(), 2, "Product Code", "");
+			rom_header.add(new ByteDataType(), 1, "Version", "");
+			rom_header.add(new ByteDataType(), 1, "Region Code", "(SMS Export)");
+			DataUtilities.createData(program, ram.getAddress(0x7ff0), rom_header, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 			
 			// https://www.smspower.org/Development/Mappers?from=Development.Mapper
 			// TODO: check size program
