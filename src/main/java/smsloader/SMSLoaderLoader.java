@@ -29,9 +29,7 @@ import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Program;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
-import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.ByteDataType;
@@ -123,10 +121,11 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			memory.setBytes(addr, romBytes);
 			
 			// execution starts at byte 0
-			AddressSet addrSet = new AddressSet(addr); // TODO: no clue how AddressSet works
-			program.getFunctionManager().createFunction("Start", addr, addrSet, SourceType.IMPORTED);
-						
 			FlatProgramAPI api = new FlatProgramAPI(program, monitor);
+			api.createLabel(ram.getAddress(0x0), "_START", true);
+			api.createLabel(ram.getAddress(0x38), "_IRQ_HANDLER", true);
+			api.createLabel(ram.getAddress(0x66), "_NMI_HANDLER", true);
+						
 
 			api.createLabel(ram.getAddress(0x7ff0), "Header", true);
 			StructureDataType rom_header = new StructureDataType("RomHeader", 0);
