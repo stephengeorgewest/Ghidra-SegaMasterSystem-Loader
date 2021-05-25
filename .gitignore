@@ -5,8 +5,8 @@ bin/
 !src/**/build/
 dist/
 .settings/
-.classpath
-.project
+#.classpath
+#.project
 
 # Ignore Gradle GUI config
 gradle-app.setting
