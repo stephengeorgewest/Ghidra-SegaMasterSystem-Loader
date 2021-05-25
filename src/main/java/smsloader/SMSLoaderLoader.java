@@ -319,6 +319,14 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				"",
 			"program", true/*R*/, true/*W*/, false/*X*/, log);
 
+			byte[] header = new byte[5];
+			memory.getBytes(ram.getAddress(0x7ffa), header);
+				log.appendMsg("rom identifier");
+				log.appendMsg(String.format("Checksum 0x%h 0x%h", header[0]&0xff, header[1]&0xff));
+				log.appendMsg(String.format("Product Code 0x%h 0x%h", header[2]&0xff, header[3]&0xff));
+				log.appendMsg(String.format("Version 0x%h", header[4]&0xff));
+
+
 		}catch(Exception e) {
 			log.appendException(e);
 		}
