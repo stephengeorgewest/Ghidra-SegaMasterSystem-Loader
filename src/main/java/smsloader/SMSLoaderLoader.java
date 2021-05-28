@@ -18,6 +18,7 @@ package smsloader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import ghidra.app.util.MemoryBlockUtils;
 import ghidra.app.util.Option;
@@ -29,6 +30,7 @@ import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Program;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+import smsloader.rom.PhantasyStar;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.data.ArrayDataType;
@@ -47,6 +49,10 @@ import ghidra.program.flatapi.FlatProgramAPI;
  * TODO: Provide class-level documentation that describes what this loader does.
  */
 public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
+	private static final String OPTION_APPLY_ROM_DATA = "Apply Rom specific data";
+	private static final String OPTION_IGNORE_CHECKSUM = "Ignore Checksum";
+	private static final String OPTION_IGNORE_VERSION = "Ignore VersionNumber";
+	private static final String OPTION_OVERRIDE_PRODUCT = "Override Product Code";
 
 	@Override
 	public String getName() {
@@ -59,6 +65,12 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 	public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
 		
+		RomHeader h = findHeader(provider);
+		if(h != null) loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("z80:LE:16:default", "default"), true));
+		return loadSpecs;
+	}
+	
+	private RomHeader findHeader(ByteProvider provider) throws IOException {
 		// Validate this is a proper SMS/GG file by looking for the header
 		
 		// The 16-byte SMS/GG header can be found at one these offsets within the file
@@ -75,14 +87,11 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			// the first 8 bytes of header are a signature
 			byte sig[] = provider.readBytes(headerOffsets[i], 8);
 			if(Arrays.equals(sig, signature.getBytes())) {
-				
 				// found the SMS/GG header, this is a valid format
-				loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("z80:LE:16:default", "default"), true));
-				break;
+				return new RomHeader(provider.readBytes(headerOffsets[i]+8+2, 5));
 			}			
-		}	
-		
-		return loadSpecs;
+		}
+		return null;
 	}
 
 	@Override
@@ -128,14 +137,14 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 						
 
 			api.createLabel(ram.getAddress(0x7ff0), "Header", true);
-			StructureDataType rom_header = new StructureDataType("RomHeader", 0);
-			rom_header.add(new StringDataType(), 8, "TMR SEGA", "");
-			rom_header.add(new WordDataType(), 2, "Reserved", "");
-			rom_header.add(new WordDataType(), 2, "Checksum", "");
-			rom_header.add(new WordDataType(), 2, "Product Code", "");
-			rom_header.add(new ByteDataType(), 1, "Version", "");
-			rom_header.add(new ByteDataType(), 1, "Region Code", "(SMS Export)");
-			DataUtilities.createData(program, ram.getAddress(0x7ff0), rom_header, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			StructureDataType rom_header_type = new StructureDataType("RomHeader", 0);
+			rom_header_type.add(new StringDataType(), 8, "TMR SEGA", "");
+			rom_header_type.add(new WordDataType(), 2, "Reserved", "");
+			rom_header_type.add(new WordDataType(), 2, "Checksum", "");
+			rom_header_type.add(new WordDataType(), 2, "Product Code", "");
+			rom_header_type.add(new ByteDataType(), 1, "Version", "");
+			rom_header_type.add(new ByteDataType(), 1, "Region Code", "(SMS Export)");
+			DataUtilities.createData(program, ram.getAddress(0x7ff0), rom_header_type, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 			
 			// https://www.smspower.org/Development/Mappers?from=Development.Mapper
 			// TODO: check size program
@@ -319,27 +328,90 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				"",
 			"program", true/*R*/, true/*W*/, false/*X*/, log);
 
-			byte[] header = new byte[5];
-			memory.getBytes(ram.getAddress(0x7ffa), header);
-				log.appendMsg("rom identifier");
-				log.appendMsg(String.format("Checksum 0x%h 0x%h", header[0]&0xff, header[1]&0xff));
-				log.appendMsg(String.format("Product Code 0x%h 0x%h", header[2]&0xff, header[3]&0xff));
-				log.appendMsg(String.format("Version 0x%h", header[4]&0xff));
+			Boolean apply_rom_data = false;
+			Boolean ignore_checksum = false;
+			Boolean ignore_version = false;
+			int override_product_version = -1;
+			for (Option o:options){
+				if(o == null) continue;
+				Object value = o.getValue();
+				if(value == null) continue;
+				switch(o.getName()){
+					case OPTION_APPLY_ROM_DATA: apply_rom_data = (boolean)value; break;
+					case OPTION_IGNORE_CHECKSUM: ignore_checksum = (boolean)value; break;
+					case OPTION_IGNORE_VERSION: ignore_version = (boolean)value; break;
+					case OPTION_OVERRIDE_PRODUCT: override_product_version = Integer.parseInt((String)value,16);
+				}
+			}
 
+			byte[] bytes = new byte[5];
+			memory.getBytes(ram.getAddress(0x7ffa), bytes);
 
-		}catch(Exception e) {
+			RomHeader rom_header = new RomHeader(
+				bytes
+			);
+
+			log.appendMsg(rom_header.toString());
+
+			if(apply_rom_data){
+				/*EAD8, 9500, 02 specific */
+				PhantasyStar.load(program, rom_header, memory, ram, io, monitor, log,
+				ignore_checksum,
+				ignore_version,
+				override_product_version);
+			}
+		} catch(Exception e) {
 			log.appendException(e);
 		}
-		
 	}
 
 	@Override
-	public List<Option> getDefaultOptions(ByteProvider provider, LoadSpec loadSpec,
-			DomainObject domainObject, boolean isLoadIntoProgram) {
-		List<Option> list =
-			super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram);
+	public List<Option> getDefaultOptions(
+		ByteProvider provider,
+		LoadSpec loadSpec,
+		DomainObject domainObject,
+		boolean isLoadIntoProgram
+	) {
+		List<Option> list = super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram);
+
+		list.add(new Option(OPTION_APPLY_ROM_DATA, true, Boolean.class, ""));
+		list.add(new Option(OPTION_IGNORE_CHECKSUM, Boolean.class));
+		list.add(new Option(OPTION_IGNORE_VERSION, Boolean.class));
+
+		String default_product_code = "";
+		try {
+			RomHeader h = findHeader(provider);
+			default_product_code = String.format("%x", h.productCode());
+		} catch(Exception e) {}
+		list.add(new Option(OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, ""));
 
 		return list;
+	}
+
+	@Override
+	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options, Program program) {
+		List<String> validationErrorStr = new ArrayList<>();
+		if (options != null) {
+			for (Option option : options) {
+				String name = option.getName();
+				if (name.equals(OPTION_APPLY_ROM_DATA) || name.equals(OPTION_IGNORE_CHECKSUM) || name.equals(OPTION_IGNORE_VERSION)) {
+					if (!Boolean.class.isAssignableFrom(option.getValueClass())) {
+						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
+					}
+				}
+				else if (name.equals(OPTION_OVERRIDE_PRODUCT)) {
+					if (!String.class.isAssignableFrom(option.getValueClass())) {
+						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
+					}
+				}
+			}
+		}
+		String superError = super.validateOptions(provider, loadSpec, options, program);
+		if(superError != null) validationErrorStr.add( superError );
+		if (validationErrorStr.size() > 0) {
+			return validationErrorStr.stream().filter(str -> str!=null).collect(Collectors.joining("\r\n"));
+		}
+		return null;
 	}
 
 }
