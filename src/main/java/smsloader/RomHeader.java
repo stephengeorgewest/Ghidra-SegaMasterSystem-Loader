@@ -14,19 +14,10 @@ public class RomHeader {
     }
 
     public int checksum() {
-/*
-        byte[] checksumbytes = Arrays.copyOfRange(this.bytes,0,1);
-        ByteBuffer bc = ByteBuffer.wrap(checksumbytes);
-        return bc.getInt();
-*/
         return bytes[0]&0xff | ((bytes[1]&0xff)<< 8);
     }
     
     public int productCode(){
-/*
-        byte[] productcodebytes = Arrays.copyOfRange(this.bytes,2,3);
-        ByteBuffer bp = ByteBuffer.wrap(productcodebytes);
-        return bp.getInt();*/
         return bytes[2]&0xff | ((bytes[3]<< 8)&0xff00);
     }
 

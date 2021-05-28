@@ -69,30 +69,6 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 		if(h != null) loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("z80:LE:16:default", "default"), true));
 		return loadSpecs;
 	}
-	
-	private RomHeader findHeader(ByteProvider provider) throws IOException {
-		// Validate this is a proper SMS/GG file by looking for the header
-		
-		// The 16-byte SMS/GG header can be found at one these offsets within the file
-		long headerOffsets[] = {0x1ff0, 0x3ff0, 0x7ff0};
-		long sizeOfHeader = 16;
-		String signature = "TMR SEGA";
-		
-		for(int i = 0; i < headerOffsets.length; i++) {
-			
-			if(provider.length() < headerOffsets[i] + sizeOfHeader) {
-				break;
-			}
-			
-			// the first 8 bytes of header are a signature
-			byte sig[] = provider.readBytes(headerOffsets[i], 8);
-			if(Arrays.equals(sig, signature.getBytes())) {
-				// found the SMS/GG header, this is a valid format
-				return new RomHeader(provider.readBytes(headerOffsets[i]+8+2, 5));
-			}			
-		}
-		return null;
-	}
 
 	@Override
 	protected void load(ByteProvider provider, LoadSpec loadSpec, List<Option> options,
@@ -410,6 +386,30 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 		if(superError != null) validationErrorStr.add( superError );
 		if (validationErrorStr.size() > 0) {
 			return validationErrorStr.stream().filter(str -> str!=null).collect(Collectors.joining("\r\n"));
+		}
+		return null;
+	}
+	
+	private RomHeader findHeader(ByteProvider provider) throws IOException {
+		// Validate this is a proper SMS/GG file by looking for the header
+		
+		// The 16-byte SMS/GG header can be found at one these offsets within the file
+		long headerOffsets[] = {0x1ff0, 0x3ff0, 0x7ff0};
+		long sizeOfHeader = 16;
+		String signature = "TMR SEGA";
+		
+		for(int i = 0; i < headerOffsets.length; i++) {
+			
+			if(provider.length() < headerOffsets[i] + sizeOfHeader) {
+				break;
+			}
+			
+			// the first 8 bytes of header are a signature
+			byte sig[] = provider.readBytes(headerOffsets[i], 8);
+			if(Arrays.equals(sig, signature.getBytes())) {
+				// found the SMS/GG header, this is a valid format
+				return new RomHeader(provider.readBytes(headerOffsets[i]+8+2, 5));
+			}			
 		}
 		return null;
 	}
