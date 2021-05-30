@@ -381,10 +381,12 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
 					}
 					try {
-						Integer.parseInt((String)option.getValue(), 16);
-						validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be [0-9A-Z]{1,4}");
+						int value = Integer.parseInt((String)option.getValue(), 16);
+						if(value < 0 || 0xFFFF < value ) {
+							validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be between 0 and 0xFFFF");
+						}
 					} catch  (Exception e) {
-						validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be between 0 and 0xFFFF");
+						validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be [0-9A-Z]{1,4}");
 					}
 				}
 			}
