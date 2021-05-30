@@ -26,6 +26,7 @@ import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.util.opinion.AbstractLibrarySupportLoader;
 import ghidra.app.util.opinion.LoadSpec;
+import ghidra.app.util.opinion.Loader;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Program;
 import ghidra.util.exception.CancelledException;
@@ -49,10 +50,10 @@ import ghidra.program.flatapi.FlatProgramAPI;
  * TODO: Provide class-level documentation that describes what this loader does.
  */
 public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
-	private static final String OPTION_APPLY_ROM_DATA = "Apply Rom specific data";
-	private static final String OPTION_IGNORE_CHECKSUM = "Ignore Checksum";
-	private static final String OPTION_IGNORE_VERSION = "Ignore VersionNumber";
-	private static final String OPTION_OVERRIDE_PRODUCT = "Override Product Code";
+	private static final String OPTION_APPLY_ROM_DATA = "Apply Rom Specific Data";
+	private static final String OPTION_IGNORE_CHECKSUM = "Ignore Rom Header Checksum";
+	private static final String OPTION_IGNORE_VERSION = "Ignore Rom Header Version Number";
+	private static final String OPTION_OVERRIDE_PRODUCT = "Override Rom Header Product Code 0x";
 
 	@Override
 	public String getName() {
@@ -350,16 +351,16 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 	) {
 		List<Option> list = super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram);
 
-		list.add(new Option(OPTION_APPLY_ROM_DATA, true, Boolean.class, ""));
-		list.add(new Option(OPTION_IGNORE_CHECKSUM, Boolean.class));
-		list.add(new Option(OPTION_IGNORE_VERSION, Boolean.class));
+		list.add(new Option(OPTION_APPLY_ROM_DATA, true, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-applyRomData"));
+		list.add(new Option(OPTION_IGNORE_CHECKSUM, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomChecksum"));
+		list.add(new Option(OPTION_IGNORE_VERSION, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomVersion"));
 
 		String default_product_code = "";
 		try {
 			RomHeader h = findHeader(provider);
 			default_product_code = String.format("%x", h.productCode());
 		} catch(Exception e) {}
-		list.add(new Option(OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, ""));
+		list.add(new Option(OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, Loader.COMMAND_LINE_ARG_PREFIX + "-overrideProductCode"));
 
 		return list;
 	}
@@ -378,6 +379,12 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				else if (name.equals(OPTION_OVERRIDE_PRODUCT)) {
 					if (!String.class.isAssignableFrom(option.getValueClass())) {
 						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
+					}
+					try {
+						Integer.parseInt((String)option.getValue(), 16);
+						validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be [0-9A-Z]{1,4}");
+					} catch  (Exception e) {
+						validationErrorStr.add("Invalid value for option: " + name.replaceFirst(" 0x", "") + ", Must be between 0 and 0xFFFF");
 					}
 				}
 			}
