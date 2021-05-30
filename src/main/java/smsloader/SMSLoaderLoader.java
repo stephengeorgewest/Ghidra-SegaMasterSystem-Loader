@@ -127,7 +127,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			// TODO: check size program
 			int bank_count = 32;
 			EnumDataType bank_enum = new EnumDataType("BankNumber", 1/*(int)Math.ceil(Math.log(bank_count)/Math.log(2))*//*1,2,4,8*/);
-			for(int i=/*0*/2; i < bank_count; i++){
+			for(int i=/*0*/3; i < bank_count; i++){
 				String bank_string = String.format("bank_%02d",i);
 				bank_enum.add(bank_string, i);
 				InputStream stream = provider.getInputStream(0x4000 * i);
