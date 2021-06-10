@@ -2,7 +2,9 @@ package smsloader.rom;
 
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.flatapi.FlatProgramAPI;
+import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.BooleanDataType;
@@ -22,39 +24,28 @@ import ghidra.util.task.TaskMonitor;
 import smsloader.RomHeader;
 
 public class PhantasyStar {
+	public static void added(Program program, AddressSetView addressSetView, TaskMonitor monitor, MessageLog log){
+		log.appendMsg("'Analyzing' Phantasy Star");
+	}
 
-    public static void load(
-        Program program,
-        RomHeader rom_header,
-        Memory memory,
-        AddressSpace ram,
-        AddressSpace io,
-        TaskMonitor monitor,
-        MessageLog log,
-        Boolean ignoreChecksum,
-        Boolean ignoreVersion,
-        int overrideProductCode
-    ) {
-        if(
-            (!ignoreChecksum && rom_header.checksum() != 0xEA38) ||
-            (
-                rom_header.productCode() != 0x9500 && 
-                rom_header.productCode() != overrideProductCode
-            ) || 
-            (!ignoreVersion && rom_header.version() != 2)
-        ){
+	public static void load(Program program, RomHeader rom_header, Memory memory, AddressSpace ram, AddressSpace io,
+			TaskMonitor monitor, MessageLog log, Boolean ignoreChecksum, Boolean ignoreVersion,
+			int overrideProductCode) {
+		if ((!ignoreChecksum && rom_header.checksum() != 0xEA38)
+				|| (rom_header.productCode() != 0x9500 && rom_header.productCode() != overrideProductCode)
+				|| (!ignoreVersion && rom_header.version() != 2)) {
             return;
         }
         
 		FlatProgramAPI api = new FlatProgramAPI(program, monitor);
         log.appendMsg("Loading Phantasy Star");
-        try{
-            api.createLabel(ram.getAddress(0x0052),"WaitForVInt", true);
-            api.createLabel(ram.getAddress(0x0084),"MainSetup", true);
-            api.createLabel(ram.getAddress(0x00AF),"MainGameLoop", true);
+		try {
+			api.createLabel(ram.getAddress(0x0052), "WaitForVInt", true);
+			api.createLabel(ram.getAddress(0x0084), "MainSetup", true);
+			api.createLabel(ram.getAddress(0x00AF), "MainGameLoop", true);
 
-            api.createLabel(ram.getAddress(0x00BE),"GameModeTbl", true);
-            EnumDataType game_mode_enum =new EnumDataType("GameMode", 2);
+			api.createLabel(ram.getAddress(0x00BE), "GameModeTbl", true);
+			EnumDataType game_mode_enum = new EnumDataType("GameMode", 2);
             game_mode_enum.add("InitIntro", 0);
             game_mode_enum.add("InitIntro_COPY", 1);
             game_mode_enum.add("LoadIntro", 2);
@@ -77,15 +68,18 @@ public class PhantasyStar {
             game_mode_enum.add("MODE0x13", 0x13); // UNUSED?
 
             ArrayDataType game_mode_table = new ArrayDataType(new Pointer16DataType(), 20, 2);
-            DataUtilities.createData(program, ram.getAddress(0x00BE), game_mode_table, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x00BE), game_mode_table, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(ram.getAddress(0x05d0), "GameMode_" + game_mode_enum.getName(0), true);
             api.createLabel(ram.getAddress(0x074D), "GameMode_" + game_mode_enum.getName(2), true);
             api.createLabel(ram.getAddress(0x05d6), "GameMode_" + game_mode_enum.getName(3), true);
             api.createLabel(ram.getAddress(0x0a5c), "GameMode_" + game_mode_enum.getName(4), true);
             api.createLabel(ram.getAddress(0x086F), "GameMode_" + game_mode_enum.getName(5), true);
-            //api.createLabel(ram.getAddress(0x0B07), "GameMode_" + game_mode_enum.getName(6), true);
-            //api.createLabel(ram.getAddress(0x0B07), "GameMode_" + game_mode_enum.getName(7), true);
+			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" +
+			// game_mode_enum.getName(6), true);
+			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" +
+			// game_mode_enum.getName(7), true);
             api.createLabel(ram.getAddress(0x0B6A), "GameMode_" + game_mode_enum.getName(8), true);
             api.createLabel(ram.getAddress(0x0B08), "GameMode_" + game_mode_enum.getName(9), true);
             api.createLabel(ram.getAddress(0x0F7D), "GameMode_" + game_mode_enum.getName(10), true);
@@ -97,15 +91,18 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x4034), "GameMode_" + game_mode_enum.getName(16), true);
             api.createLabel(ram.getAddress(0x03EB9), "GameMode_" + game_mode_enum.getName(17), true);
             api.createLabel(ram.getAddress(0x0467C), "GameMode_" + game_mode_enum.getName(18), true);
-            //api.createLabel(ram.getAddress(0x467C), "GameMode_" + game_mode_enum.getName(19), true);
-            //api.createLabel(ram.getAddress(0x08587), "GameMode_" + game_mode_enum.getName(20), true);
+			// api.createLabel(ram.getAddress(0x467C), "GameMode_" +
+			// game_mode_enum.getName(19), true);
+			// api.createLabel(ram.getAddress(0x08587), "GameMode_" +
+			// game_mode_enum.getName(20), true);
 
             api.createLabel(ram.getAddress(0x00E6), "GetPtrAndJump", true);
             api.createLabel(ram.getAddress(0x00F1), "PauseLoop", true);
             api.createLabel(ram.getAddress(0x00fB), "VInt", true);
 
             ArrayDataType jump_table = new ArrayDataType(new Pointer16DataType(), 12, 2);
-            DataUtilities.createData(program, ram.getAddress(0x018f), jump_table, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x018f), jump_table, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0x02e5), "CallSndUpdate", true);
             api.createLabel(ram.getAddress(0x02ed), "CallSndInit", true);
@@ -113,7 +110,8 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x0339), "ReadJoypad", true);
             api.createLabel(ram.getAddress(0x05b1), "UpdateRNGSeed", true);
 
-            DataUtilities.createData(program, ram.getAddress(0x0807), new StringDataType(), 0x40, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x0807), new StringDataType(), 0x40, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             addpointers(0xDFC, 0xDFD, program, ram);// ?
             addpointers(0x12C4, 0x12D4, program, ram);
@@ -125,13 +123,14 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x1754), "CalculateExp", true);
             // apply enum bank number to 0x175d
             api.createLabel(ram.getAddress(0x17ba), "UpdateCharStats", true);
-            //fn
-            //iy = char stats
-            //ix = level table
+			// fn
+			// iy = char stats
+			// ix = level table
 
             api.createLabel(ram.getAddress(0x183a), "ItemEquipBoosts", true);
-            ArrayDataType item_equip_boosts = new ArrayDataType(new ByteDataType(), 0x187a-0x0183a, 1);
-            DataUtilities.createData(program, ram.getAddress(0x183a), item_equip_boosts, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType item_equip_boosts = new ArrayDataType(new ByteDataType(), 0x187a - 0x0183a, 1);
+			DataUtilities.createData(program, ram.getAddress(0x183a), item_equip_boosts, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(ram.getAddress(0x187a), "IsCharacterAlive_FromC267", true);
             api.createLabel(ram.getAddress(0x187d), "IsCharacterAlive", true);
@@ -167,14 +166,14 @@ public class PhantasyStar {
 			magic_id.add("Tele", 0x11);
 			magic_id.add("Fly", 0x12);
 
-            
             api.createLabel(ram.getAddress(0x1a57), "BattleMagicList", true);
             ArrayDataType magic_list = new ArrayDataType(magic_id, 5, 1);
 			StructureDataType character_magic_list = new StructureDataType("CharacterMagicList", 0);
 			character_magic_list.add(magic_list, 5, "Alis", "");
 			character_magic_list.add(magic_list, 5, "Myau", "");
 			character_magic_list.add(magic_list, 5, "Noah", "");
-            DataUtilities.createData(program, ram.getAddress(0x1a57), character_magic_list, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x1a57), character_magic_list, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             addpointers(0x1A66, 0x1AAE, program, ram);
             // TODO: pointers to bank_12
@@ -189,25 +188,29 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x1cdf), "PlayerMenu_Save", true);
             // TODO: 0xba62 pointer to bank 12, LABEL_B12_BA62
             /**
-             *         PlayerMenu_Save                                 XREF[1]:     ram:1c9f(*) 
-             * ram:1cdf 21 62 ba        LD         HL,0xBA62
+			 * PlayerMenu_Save XREF[1]: ram:1c9f(*) ram:1cdf 21 62 ba LD HL,0xBA62
              */
-            // AddressSpace bank12_address = api.getAddressFactory().getAddressSpace("bank_12");
+			// AddressSpace bank12_address =
+			// api.getAddressFactory().getAddressSpace("bank_12");
             // null pointer?
-            // api.createMemoryReference(api.getDataAt(ram.getAddress(0x1ce0)), bank12_address.getAddress(0xBA62), RefType.DATA);
+			// api.createMemoryReference(api.getDataAt(ram.getAddress(0x1ce0)),
+			// bank12_address.getAddress(0xBA62), RefType.DATA);
             
             api.createLabel(ram.getAddress(0x2d25), "WaitForButton1Or2", true);
              
             api.createLabel(ram.getAddress(0x1ddc), "MPCostData", true);
             ArrayDataType mp_cost_data = new ArrayDataType(new ByteDataType(), 0x13, 1);
-            DataUtilities.createData(program, ram.getAddress(0x1ddc), mp_cost_data, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x1ddc), mp_cost_data, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(ram.getAddress(0x1def), "MapMagicList", true);
-			/*StructureDataType map_magic_list = new StructureDataType("MapMagicList", 0);
-			map_magic_list.add(magic_list, 5, "Alis", "");
-			map_magic_list.add(magic_list, 5, "Myau", "");
-			map_magic_list.add(magic_list, 5, "Noah", "");*/
-            DataUtilities.createData(program, ram.getAddress(0x1def), character_magic_list, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			/*
+			 * StructureDataType map_magic_list = new StructureDataType("MapMagicList", 0);
+			 * map_magic_list.add(magic_list, 5, "Alis", ""); map_magic_list.add(magic_list,
+			 * 5, "Myau", ""); map_magic_list.add(magic_list, 5, "Noah", "");
+			 */
+			DataUtilities.createData(program, ram.getAddress(0x1def), character_magic_list, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             addpointers(0x1dfe, 0x1E24, program, ram);
 
@@ -255,7 +258,7 @@ public class PhantasyStar {
             // TODO: make const and apply
             api.setEOLComment(ram.getAddress(0x2831), "InventoryMaxNum");
             api.createLabel(ram.getAddress(0x279f), "Inventory_AddItem", true);
-            // FUN_ram_2b84  ? 
+			// FUN_ram_2b84 ?
             api.setEOLComment(ram.getAddress(0x2d2d), "Button_1_Mask|Button_2_Mask");
 
             api.createLabel(ram.getAddress(0x2d51), "CheckOptionSelect", true);
@@ -272,7 +275,8 @@ public class PhantasyStar {
 			character_names.add(new StringDataType(), 4, "Myau", "");
 			character_names.add(new StringDataType(), 4, "Odin", "");
 			character_names.add(new StringDataType(), 4, "Noah", "");
-            DataUtilities.createData(program, ram.getAddress(0x31bb), character_names, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x31bb), character_names, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(ram.getAddress(0x31cf), "ShowDialogue_B12", true);
 
@@ -295,13 +299,27 @@ public class PhantasyStar {
 			bank_address_map_set.add(bank_address_map2, 5, "Set1", "");
 			bank_address_map_set.add(bank_address_map, 3, "Set2", "");
             ArrayDataType bank_address_map_set_array = new ArrayDataType(bank_address_map_set, 10, 1);
-            DataUtilities.createData(program, ram.getAddress(0x3DA6), bank_address_map_set_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0x3DA6), bank_address_map_set_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             /* Bank 1 */
             
             ArrayDataType bank_address2_mapping_array = new ArrayDataType(bank_address_map_set, 9, 1);
-            DataUtilities.createData(program, ram.getAddress(0x471E), bank_address2_mapping_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0x471E), bank_address2_mapping_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			// TODO: make refs automatically:
+			/*
+			 * if(bank_number > 0){ byte[] bytes = new byte[2]; try{
+			 * program.getMemory().getBytes(address, bytes); } catch (Exception e)
+			 * {log.appendException(e); continue;}
+			 * 
+			 * long bank_address_int = bytes[2]&0xff | ((bytes[3]<< 8)&0xff00); AddressSpace
+			 * bank_space = program.getAddressFactory()
+			 * .getAddressSpace(String.format("bank_%02d", bank_number)); Address
+			 * bank_address = bank_space.getAddress(bank_address_int);
+			 * program.getReferenceManager().addMemoryReference(address, bank_address,
+			 * RefType.DATA, SourceType.USER_DEFINED, 0); }
+			 */
             addpointers(0x4773, 0x48DF, program, ram);
 
             api.createLabel(ram.getAddress(0x4F9B), "Purchase_Gas_Shield", true);
@@ -318,8 +336,9 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x5f63), "Map_RunRandomBattles", true);
             api.createLabel(ram.getAddress(0x5fd8), "Dungeon_GetEncounter", true);
             
-            // TODO: all bank 14 pointers
-            addpointers(0x6345, 0x63A5, program, ram);
+			// bank 14 pointers
+			AddressSpace bank14_address = api.getAddressFactory().getAddressSpace("bank_14");
+			addpointers(0x6345, 0x63A5, program, bank14_address);
 
             // regular bank 1 pointers
             addpointers(0x63B8, 0x63CE, program, ram);
@@ -327,10 +346,13 @@ public class PhantasyStar {
             api.setEOLComment(ram.getAddress(0x66e4), "ButtonUp_Mask|ButtonDown_Mask|ButtonLeft_Mask|ButtonRight_Mask");
             
             // Bank 6 pointers
-            addpointers(0x6E75, 0x6E8B, program, ram);
+			AddressSpace bank06_address = api.getAddressFactory().getAddressSpace("bank_06");
+			addpointers(0x6E75, 0x6E8B, program, bank06_address);
             
-            ArrayDataType bank_address_mapping_array2 = new ArrayDataType(bank_address_map_set, (0x7143-0x705f)/3, 1);
-            DataUtilities.createData(program, ram.getAddress(0x705F), bank_address_mapping_array2, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType bank_address_mapping_array2 = new ArrayDataType(bank_address_map_set, (0x7143 - 0x705f) / 3,
+					1);
+			DataUtilities.createData(program, ram.getAddress(0x705F), bank_address_mapping_array2, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(ram.getAddress(0x7afd), "FadeOut", true);
             api.createLabel(ram.getAddress(0x7b05), "FadeOut2", true);
@@ -338,8 +360,9 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x7b20), "FadeIn2", true);
 
             api.createLabel(ram.getAddress(0x7da3), "ItemNames", true);
-            ArrayDataType item_names = new ArrayDataType(new StringDataType(), (0x7fab-0x7da3)/8, 8);
-            DataUtilities.createData(program, ram.getAddress(0x7da3), item_names, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType item_names = new ArrayDataType(new StringDataType(), (0x7fab - 0x7da3) / 8, 8);
+			DataUtilities.createData(program, ram.getAddress(0x7da3), item_names, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             /*
             ; =================================================================
@@ -353,11 +376,11 @@ public class PhantasyStar {
             ; =================================================================
             */
             api.createLabel(ram.getAddress(0x7fab), "ItemData", true); // ... 7feb
-            ArrayDataType item_data = new ArrayDataType(new ByteDataType(), 0x7feb-0x7fab, 1);
-            DataUtilities.createData(program, ram.getAddress(0x7fab), item_data, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType item_data = new ArrayDataType(new ByteDataType(), 0x7feb - 0x7fab, 1);
+			DataUtilities.createData(program, ram.getAddress(0x7fab), item_data, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             /* Rom Header */
-
 
 			/* bank2 */
 
@@ -375,43 +398,54 @@ public class PhantasyStar {
             
             /* ram */
             
-
             api.createLabel(ram.getAddress(0xC202), "Game_mode", true);
-            DataUtilities.createData(program, ram.getAddress(0xC202), game_mode_enum, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC202), game_mode_enum, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC212), "Game_is_paused", true);
-            DataUtilities.createData(program, ram.getAddress(0xC212), new BooleanDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC212), new BooleanDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC21b), "Fade_timer", true);
-            DataUtilities.createData(program, ram.getAddress(0xC21b), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC21b), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC204), "Ctrl_1", true);
-            DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC204), "Ctrl_1_held", true);
-            DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC205), "Ctrl_1_pressed", true);
-            DataUtilities.createData(program, ram.getAddress(0xC205), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC205), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC20C), "RNG_seed", true);
-            DataUtilities.createData(program, ram.getAddress(0xC20C), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC20C), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC204), "Ctrl_1", true);
-            DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC204), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC269), "Cursor_pos", true);
-            DataUtilities.createData(program, ram.getAddress(0xC269), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC269), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
-            api.createLabel(ram.getAddress(0xC26E), "Option_total_num", true); // number of options available for an interactive menu (e.g. player menu)
-            DataUtilities.createData(program, ram.getAddress(0xC26E), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			api.createLabel(ram.getAddress(0xC26E), "Option_total_num", true); // number of options available for an
+																				// interactive menu (e.g. player menu)
+			DataUtilities.createData(program, ram.getAddress(0xC26E), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC29E), "Interaction_Type", true); // Background?
-            DataUtilities.createData(program, ram.getAddress(0xC29E), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC29E), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(ram.getAddress(0xC2C2), "CurrentCharacter", true); // Used for battle dialogue etc
-			DataUtilities.createData(program, ram.getAddress(0xC2C2), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0xC2C2), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
 			api.createLabel(ram.getAddress(0xC2C4), "CurrentItem", true); // Used in dialogue, Inventory_AddItem etc
 			
@@ -481,30 +515,38 @@ public class PhantasyStar {
 			item_id.add("MiracleKey", 0x3E);
 			item_id.add("Zillion", 0x3F);
 			item_id.add("Secrets", 0x40);
-            DataUtilities.createData(program, ram.getAddress(0xC2C4), item_id, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC2C4), item_id, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
-			api.createLabel(ram.getAddress(0xC2C5), "CurrentDialogueNumber", true); // unsigned 2 bytes, little endian, used in dialogue, control character $5E
-			DataUtilities.createData(program, ram.getAddress(0xC2C5), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			api.createLabel(ram.getAddress(0xC2C5), "CurrentDialogueNumber", true); // unsigned 2 bytes, little endian,
+																					// used in dialogue, control
+																					// character $5E
+			DataUtilities.createData(program, ram.getAddress(0xC2C5), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC2C8), "CurrentBattle_EnemyName", true); // 8 bytes
-			DataUtilities.createData(program, ram.getAddress(0xC2C8), new StringDataType(), 0x8, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC2C8), new StringDataType(), 0x8, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC2D0), "CurrentBattle_EXPReward", true); // unsigned 2 bytes, little endian
-			DataUtilities.createData(program, ram.getAddress(0xC2D0), new WordDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0xC2D0), new WordDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC2D9), "Dungeon_entrance_points_addr", true);
-			DataUtilities.createData(program, ram.getAddress(0xC2D9), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0xC2D9), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC30A), "Dungeon_direction", true);
-			DataUtilities.createData(program, ram.getAddress(0xC30A), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC30A), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC30C), "Dungeon_position", true);
-			DataUtilities.createData(program, ram.getAddress(0xC30C), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC30C), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC30D), "Dungeon_index", true);
-			DataUtilities.createData(program, ram.getAddress(0xC30D), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC30D), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 			
 			StructureDataType character_stats = new StructureDataType("CharacterStats", 0);
 			character_stats.add(new ByteDataType(), 1, "Status", "");
@@ -525,41 +567,50 @@ public class PhantasyStar {
 
 			api.createLabel(ram.getAddress(0xC400), "Alis_stats", true);
 			api.createLabel(ram.getAddress(0xC400), "Char_stats", true);
-			DataUtilities.createData(program, ram.getAddress(0xC400), character_stats, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC400), character_stats, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC410), "Myau_stats", true);
-			DataUtilities.createData(program, ram.getAddress(0xC410), character_stats, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC410), character_stats, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC420), "Odin_stats", true);
-			DataUtilities.createData(program, ram.getAddress(0xC420), character_stats, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC420), character_stats, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC430), "Noah_stats", true);
-			DataUtilities.createData(program, ram.getAddress(0xC430), character_stats, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0xC430), character_stats, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC4C0), "Inventory", true);
-			DataUtilities.createData(program, ram.getAddress(0xC4C0), item_id, 0x18, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC4C0), item_id, 0x18, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC4E0), "Current_money", true);
-			DataUtilities.createData(program, ram.getAddress(0xC4E0), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC4E0), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC4E2), "Inventory_curr_num", true);
-			DataUtilities.createData(program, ram.getAddress(0xC4E2), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			DataUtilities.createData(program, ram.getAddress(0xC4E2), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xC4F0), "Party_curr_num", true); // starts from 0
-			DataUtilities.createData(program, ram.getAddress(0xC4F0), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xC4F0), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
+			api.createLabel(ram.getAddress(0xC500), "Dialogue_flags", true); // table holding flags for dialogues; if
+																				// value is $FF, dialogue is not loaded
+			// DataUtilities.createData(program, ram.getAddress(0xC500), new ByteDataType(),
+			// 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
-			api.createLabel(ram.getAddress(0xC500), "Dialogue_flags", true); // table holding flags for dialogues; if value is $FF, dialogue is not loaded
-			//DataUtilities.createData(program, ram.getAddress(0xC500), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
-			api.createLabel(ram.getAddress(0xC600), "Event_flags", true); // used for chests and scripted encounters in dungeons
-			//DataUtilities.createData(program, ram.getAddress(0xC600), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-
+			api.createLabel(ram.getAddress(0xC600), "Event_flags", true); // used for chests and scripted encounters in
+																			// dungeons
+			// DataUtilities.createData(program, ram.getAddress(0xC600), new ByteDataType(),
+			// 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xCB00), "System_stack", true);
-			DataUtilities.createData(program, ram.getAddress(0xCB00), new ByteDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, ram.getAddress(0xCB00), new ByteDataType(), 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
 			api.createLabel(ram.getAddress(0xCB00), "Dungeon_layout", false);
             EnumDataType dungeon_tile = new EnumDataType("DungeonTile", 1);
@@ -578,25 +629,26 @@ public class PhantasyStar {
 			dungeon_tile.add("Exit locked door", 0xD);
 			dungeon_tile.add("Ext magical door", 0xE);
             ArrayDataType dungeon_layout = new ArrayDataType(dungeon_tile, 0x100, dungeon_tile.getLength());
-			DataUtilities.createData(program, ram.getAddress(0xCB00), dungeon_layout, 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-            /* $100 bytes; 1 byte per tile;
-            0 = Empty
-            1 = Wall
-            2 = Floor up
-            3 = Floor down
-            4 = Unlocked door	; bit 7 determines if it's open (set) or not (clear)
-            5 = Dungeon key door
-            6 = Magically locked door
-            7 = Fake wall
-            8 = Object (Check out B03_ObjectData)
-            $A = Exit up
-            $B = Exit down
-            $C = Exit door
-            $D = Exit locked door
-            $E = Ext magical door
-            */
+			DataUtilities.createData(program, ram.getAddress(0xCB00), dungeon_layout, 0x1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
-            /* Bank 03*/
+			// $100 bytes; 1 byte per tile;
+            // 0 = Empty
+            // 1 = Wall
+            // 2 = Floor up
+            // 3 = Floor down
+            // 4 = Unlocked door	; bit 7 determines if it's open (set) or not (clear)
+            // 5 = Dungeon key door
+            // 6 = Magically locked door
+            // 7 = Fake wall
+            // 8 = Object (Check out B03_ObjectData)
+            // $A = Exit up
+            // $B = Exit down
+            // $C = Exit door
+            // $D = Exit locked door
+            // $E = Ext magical door
+
+			/* Bank 03 */
             AddressSpace bank03_address = api.getAddressFactory().getAddressSpace("bank_03");
 
             api.createLabel(bank03_address.getAddress(0x8180), "B03_EncounterPoolData", true);
@@ -678,7 +730,8 @@ public class PhantasyStar {
 			enemy_id.add("Saccubus", 0x4A);
             ArrayDataType enemy_encounter = new ArrayDataType(enemy_id, 0x8, 1);
             ArrayDataType enemy_encounter_pool = new ArrayDataType(enemy_encounter, 0x5E, 8);
-            DataUtilities.createData(program, bank03_address.getAddress(0x8180), enemy_encounter_pool, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, bank03_address.getAddress(0x8180), enemy_encounter_pool, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(bank03_address.getAddress(0x8470), "B03_MapEncounterIDList", true);
             // TODO: type?
@@ -701,11 +754,14 @@ public class PhantasyStar {
             enemy_data.add(new WordDataType(), 2, "EXP", "");
 			enemy_data.add(new ByteDataType(), 1, "Unknown3", "");
             enemy_data.add(new ByteDataType(), 1, "Run chance", "");
-            /*log.appendMsg("enemy_id.getLength() "  + enemy_id.getLength());
-            log.appendMsg("enemy_id.getCount() "  + enemy_id.getCount());
-            log.appendMsg("enemy_data.getLength() "  + enemy_data.getLength());*/
+			/*
+			 * log.appendMsg("enemy_id.getLength() " + enemy_id.getLength());
+			 * log.appendMsg("enemy_id.getCount() " + enemy_id.getCount());
+			 * log.appendMsg("enemy_data.getLength() " + enemy_data.getLength());
+			 */
             ArrayDataType enemy_data_array = new ArrayDataType(enemy_data, enemy_id.getCount(), enemy_data.getLength());
-            DataUtilities.createData(program, bank03_address.getAddress(0x867f), enemy_data_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			DataUtilities.createData(program, bank03_address.getAddress(0x867f), enemy_data_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             api.createLabel(bank03_address.getAddress(0x867f), "Enemy_None", true);
 
             addpointers(0x96F4, 0x980C, program, bank03_address);
@@ -714,14 +770,17 @@ public class PhantasyStar {
             // 6 bytes per data
             StructureDataType dungeon_entrance_point = new StructureDataType("DungeonEntrancePoint", 0);
 			dungeon_entrance_point.add(new ByteDataType(), 6, "Point", "");
-            ArrayDataType dungeon_entrance_point_array = new ArrayDataType(dungeon_entrance_point, (0xaf5c-0xa935)/dungeon_entrance_point.getLength(), dungeon_entrance_point.getLength());
-            DataUtilities.createData(program, bank03_address.getAddress(0xa935), dungeon_entrance_point_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType dungeon_entrance_point_array = new ArrayDataType(dungeon_entrance_point,
+					(0xaf5c - 0xa935) / dungeon_entrance_point.getLength(), dungeon_entrance_point.getLength());
+			DataUtilities.createData(program, bank03_address.getAddress(0xa935), dungeon_entrance_point_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(bank03_address.getAddress(0xaf5c), "B03_ObjectData", true);
 			StructureDataType object_data = new StructureDataType("ObjectData", 0);
 			object_data.add(new ByteDataType(), 1, "DungeonID", "");
 			object_data.add(new ByteDataType(), 1, "Coordinates", " (YX)");
-			object_data.add(new Pointer16DataType(), 2, "FlagAddress", "Flag address in RAM; either Dialogue_flags $C500 + number or Event_flags $C600 + number; if value in that address is $FF, the current object will be ignored");
+			object_data.add(new Pointer16DataType(), 2, "FlagAddress",
+					"Flag address in RAM; either Dialogue_flags $C500 + number or Event_flags $C600 + number; if value in that address is $FF, the current object will be ignored");
             EnumDataType object_type = new EnumDataType("ObjectType", 1);
             object_type.add("Item", 0);
             object_type.add("Meseta", 1);
@@ -730,31 +789,36 @@ public class PhantasyStar {
 			object_data.add(object_type, 1, "ObjectType", "0 = Item; 1 = Meseta; 2 = Battle; 3 = Dialogue");
             UnionDataType content_type = new UnionDataType("ContentType");
             content_type.add(item_id, 1, "Item", "it holds the item ID; if byte 7 is > 0, the chest contains a trap)");
-            content_type.add(new WordDataType(), 2, "Meseta","");
+			content_type.add(new WordDataType(), 2, "Meseta", "");
             StructureDataType enemy_id_item_id = new StructureDataType("EnemyIdItemId", 0);
 			enemy_id_item_id.addBitField(enemy_id, 4, "Nibble1", "");
-			enemy_id_item_id.insertBitField(0,1,4, item_id, 4, "Nibble2", "");
+			enemy_id_item_id.insertBitField(0, 1, 4, item_id, 4, "Nibble2", "");
             content_type.add(enemy_id_item_id, 2, "EnemyId", "byte 6 is the enemy ID, byte 7 is the item dropped");
-            content_type.add(new Pointer16DataType(), 2, "DialogueId","");
+			content_type.add(new Pointer16DataType(), 2, "DialogueId", "");
 			object_data.add(content_type, 2, "Content", "which depends on type (byte 5)");
-            /*
-                if type = Item, 
-				if type = Meseta, it holds the Meseta value (word)
-		    	if type = Battle, byte 6 is the enemy ID, byte 7 is the item dropped
-			    if type = Dialogue, byte 6 is the dialogue ID
-            */
-            ArrayDataType object_data_array = new ArrayDataType(object_data, (0xb473 - 1 - 0xaf5c)/object_data.getLength(), object_data.getLength());
-            DataUtilities.createData(program, bank03_address.getAddress(0xaf5c), object_data_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+            
+            // if type = Item, 
+			// if type = Meseta, it holds the Meseta value (word)
+		    // if type = Battle, byte 6 is the enemy ID, byte 7 is the item dropped
+			// if type = Dialogue, byte 6 is the dialogue ID
+            
+			ArrayDataType object_data_array = new ArrayDataType(object_data,
+					(0xb473 - 1 - 0xaf5c) / object_data.getLength(), object_data.getLength());
+			DataUtilities.createData(program, bank03_address.getAddress(0xaf5c), object_data_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(bank03_address.getAddress(0xb473), "DungeonTransitionData", true);
             StructureDataType dungeon_transition = new StructureDataType("DungeonTransition", 0);
             dungeon_transition.add(new ByteDataType(), 1, "DungeonID", "");
             dungeon_transition.add(new ByteDataType(), 1, "Coordinates", "(YX)");
-            dungeon_transition.add(new ByteDataType(), 1, "TargetMap", "$FF means it's a room with an NPC"); // TODO; <del>break up into sub-types?</del> --- Use Union
+			dungeon_transition.add(new ByteDataType(), 1, "TargetMap", "$FF means it's a room with an NPC");
+			 // TODO; <del>break up into sub-types?</del> --- Use Union
             UnionDataType y_dialog = new UnionDataType("YDialogID");
             y_dialog.add(new ByteDataType(), 1, "Y", "");
             EnumDataType dialog_id = new EnumDataType("DialogID", 1);
-            /* TODO: fill out dialog id numbers could be some dialog pointertable in bank12?*/
+			/*
+			 * TODO: fill out dialog id numbers could be some dialog pointertable in bank12?
+			 */
             y_dialog.add(dialog_id, 1, "DialogID", "");
             dungeon_transition.add(y_dialog, 1, "Y", "if TargetMap = $FF, it holds the dialogue ID");
             UnionDataType x_spriteindex = new UnionDataType("XSpriteIndex");
@@ -762,21 +826,25 @@ public class PhantasyStar {
             EnumDataType sprite_index = new EnumDataType("SpriteIndex", 1);
             /* TODO: fill out sprite index */
             x_spriteindex.add(sprite_index, 1, "SpriteIndex", "");
-            dungeon_transition.add(x_spriteindex, 1, "X","if TargetMap = $FF, it holds the sprite index");
-            ArrayDataType dungeon_transition_array = new ArrayDataType(dungeon_transition, (0xB5B9-0xb473)/dungeon_transition.getLength(), dungeon_transition.getLength());
-            DataUtilities.createData(program, bank03_address.getAddress(0xb473), dungeon_transition_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			dungeon_transition.add(x_spriteindex, 1, "X", "if TargetMap = $FF, it holds the sprite index");
+			ArrayDataType dungeon_transition_array = new ArrayDataType(dungeon_transition,
+					(0xB5B9 - 0xb473) / dungeon_transition.getLength(), dungeon_transition.getLength());
+			DataUtilities.createData(program, bank03_address.getAddress(0xb473), dungeon_transition_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             
             api.createLabel(bank03_address.getAddress(0xb70d), "B03_ShopData", true);
             StructureDataType shop_item = new StructureDataType("ShopItem", 0);
             shop_item.add(item_id, 1, "Item", "");
-            shop_item.add(new WordDataType(), 2, "Cost","");
+			shop_item.add(new WordDataType(), 2, "Cost", "");
             ArrayDataType shop_item_array = new ArrayDataType(shop_item, 3, shop_item.getLength());
 
             StructureDataType shop_data = new StructureDataType("ShopData", 0);
             shop_data.add(new ByteDataType(), 1, "ItemCount", "");
             shop_data.add(shop_item_array, shop_item_array.getLength(), "Items", "");
-            ArrayDataType shop_data_array = new ArrayDataType(shop_data, (0xb8af-0xb70d)/shop_data.getLength(), shop_data.getLength());
-            DataUtilities.createData(program, bank03_address.getAddress(0xb70d), shop_data_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType shop_data_array = new ArrayDataType(shop_data, (0xb8af - 0xb70d) / shop_data.getLength(),
+					shop_data.getLength());
+			DataUtilities.createData(program, bank03_address.getAddress(0xb70d), shop_data_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             api.createLabel(bank03_address.getAddress(0xb8af), "B03_AlisLevelTable", true);
             api.createLabel(bank03_address.getAddress(0xb99f), "B03_MyauLevelTable", true);
@@ -787,12 +855,15 @@ public class PhantasyStar {
             level_entry.add(new ByteDataType(), 1, "attack", "");
             level_entry.add(new ByteDataType(), 1, "defense", "");
             level_entry.add(new ByteDataType(), 1, "max MP", "");
-            level_entry.add(new WordDataType(), 2, "5-6 = exp", "it's little endian so you need to read byte 6 first, byte 5 second"); 
+			level_entry.add(new WordDataType(), 2, "5-6 = exp",
+					"it's little endian so you need to read byte 6 first, byte 5 second");
             level_entry.add(new ByteDataType(), 1, "BattleSpellCount", "number of spells available in battle");
             level_entry.add(new ByteDataType(), 1, "WorldSpellCount", "number of spells available outside of battle");
             ArrayDataType level_entry_array = new ArrayDataType(level_entry, 30, level_entry.getLength());
-            ArrayDataType level_entry_array_array = new ArrayDataType(level_entry_array, 4, level_entry_array.getLength()*8);
-            DataUtilities.createData(program, bank03_address.getAddress(0xb8af), level_entry_array_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ArrayDataType level_entry_array_array = new ArrayDataType(level_entry_array, 4,
+					level_entry_array.getLength() * 8);
+			DataUtilities.createData(program, bank03_address.getAddress(0xb8af), level_entry_array_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             /**
              * Bank 12, sound driver and dialog.
@@ -800,71 +871,72 @@ public class PhantasyStar {
             AddressSpace bank12_address = api.getAddressFactory().getAddressSpace("bank_12");
             // TODO: fix up references, analyzer?
             // find all set bank and 
-            /*api.createMemoryReference​(new Data(), bank12_address.getAddress(0x8000), RefType.UNCONDITIONAL_JUMP);*/
+            // api.createMemoryReference​(new Data(), bank12_address.getAddress(0x8000), RefType.UNCONDITIONAL_JUMP);
 
             // MemoryBlock bank_12 = memory.getBlock("bank_12");
-            api.createLabel(bank12_address.getAddress(0x8000),"Snd_InitDriver", true);
-            api.createLabel(bank12_address.getAddress(0x8043),"Snd_UpdateAll", true);
-            api.createLabel(bank12_address.getAddress(0x801f),"Snd_SilencePSG", true);
+			api.createLabel(bank12_address.getAddress(0x8000), "Snd_InitDriver", true);
+			api.createLabel(bank12_address.getAddress(0x8043), "Snd_UpdateAll", true);
+			api.createLabel(bank12_address.getAddress(0x801f), "Snd_SilencePSG", true);
             
             addpointers(0x8253, 0x82EF, program, bank12_address);
             addpointers(0x8530, 0x8554, program, bank12_address);
             addpointers(0xA877, 0xA88D, program, bank12_address);
             addpointers(0xA916, 0xA920, program, bank12_address);
 
-            /*  Dialogue from here on
-                Control characters:
-                $40 apostrophe
-                $5B current character name
-                $5C enemy name
-                $5D current item name
-                $5E reads 2 byte unsigned number from $C525 and displays it
-                $60 newline
-                $61 newpage
-                $62 terminator
-                $63 terminator
-                $65 terminator
-            */
-            for(int address = 0xB108; address < 0xbfdc; address++ ){
-                DataUtilities.createData(program, bank12_address.getAddress(address), new CharDataType(), 0x1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+            // Dialogue from here on
+            // Control characters:
+            // $40 apostrophe
+            // $5B current character name
+            // $5C enemy name
+            // $5D current item name
+            // $5E reads 2 byte unsigned number from $C525 and displays it
+            // $60 newline
+            // $61 newpage
+            // $62 terminator
+            // $63 terminator
+            // $65 terminator
+			for (int address = 0xB108; address < 0xbfdc; address++) {
+				DataUtilities.createData(program, bank12_address.getAddress(address), new CharDataType(), 0x1, false,
+						DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             }
             api.createLabel(bank12_address.getAddress(0xB108), "EnemyDodges", true);
             api.createLabel(bank12_address.getAddress(0xB118), "CurrentCharacterDodges", true);
             api.createLabel(bank12_address.getAddress(0xba62), "InProgress", true);
             // TODO: analyzer?
 
-            /* Bank 15*/
+			/* Bank 15 */
             AddressSpace bank15_address = api.getAddressFactory().getAddressSpace("bank_15");
-            /*
-            ; =================================================================
-            ; Each tile is stored in a nybble (4 bits)
-            ; 	0 = Empty
-            ;	1 = Wall
-            ;	2 = Floor up
-            ;	3 = Floor down
-            ;	4 = Unlocked door	; bit 7 determines if it's open (set) or not (clear)
-            ;	5 = Dungeon key door
-            ;	6 = Magically locked door
-            ;	7 = Fake wall
-            ;	8 = Object (Check out B03_ObjectData)
-            ;	$A = Exit up
-            ;	$B = Exit down
-            ;	$C = Exit door
-            ;	$D = Exit locked door
-            ;	$E = Ext magical door
-            ; =================================================================
-            B15_DungeonLayouts:
+            
+            // =================================================================
+            // Each tile is stored in a nybble (4 bits)
+            // 	0 = Empty
+            //	1 = Wall
+            //	2 = Floor up
+            //	3 = Floor down
+            //	4 = Unlocked door	; bit 7 determines if it's open (set) or not (clear)
+            //	5 = Dungeon key door
+            //	6 = Magically locked door
+            //	7 = Fake wall
+            //	8 = Object (Check out B03_ObjectData)
+            //	$A = Exit up
+            //	$B = Exit down
+            //	$C = Exit door
+            //	$D = Exit locked door
+            //	$E = Ext magical door
+            // =================================================================
 
-            Dungeon_MedusaCave:
-            */
+        
 			api.createLabel(bank15_address.getAddress(0x9f6e), "B15_DungeonLayouts", true);
 			
             StructureDataType packed_dungeon_tile = new StructureDataType("PackedDungeonTile", 0);
 			packed_dungeon_tile.addBitField(dungeon_tile, 4, "Nibble1", "");
-			packed_dungeon_tile.insertBitField(0,1,4, dungeon_tile, 4, "Nibble2", "");
-            ArrayDataType packed_dungeon_layout = new ArrayDataType(packed_dungeon_tile, 8*16, packed_dungeon_tile.getLength());
-            ArrayDataType packed_dungeon_layout_array = new ArrayDataType(packed_dungeon_layout, 61, dungeon_layout.getLength());
-            DataUtilities.createData(program, bank15_address.getAddress(0x9f6e), packed_dungeon_layout_array, 1, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			packed_dungeon_tile.insertBitField(0, 1, 4, dungeon_tile, 4, "Nibble2", "");
+			ArrayDataType packed_dungeon_layout = new ArrayDataType(packed_dungeon_tile, 8 * 16,
+					packed_dungeon_tile.getLength());
+			ArrayDataType packed_dungeon_layout_array = new ArrayDataType(packed_dungeon_layout, 61,
+					dungeon_layout.getLength());
+			DataUtilities.createData(program, bank15_address.getAddress(0x9f6e), packed_dungeon_layout_array, 1, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
             // 8*16*61+x9f6e = 128*61+x9f6e = x1e80+x9f6e == xBDEE = LABEL_B15_BDEE:
 			api.createLabel(bank15_address.getAddress(0x9f6e), "Dungeon_MedusaCave", true);
             api.createLabel(bank15_address.getAddress(0x9fee), "Dungeon_TriadaPrison", true);
@@ -872,17 +944,19 @@ public class PhantasyStar {
 
             /* Bank 21 */
             AddressSpace bank21_address = api.getAddressFactory().getAddressSpace("bank_21");
-            addpointers(0x8000,0x8200, program, bank21_address);
+			addpointers(0x8000, 0x8200, program, bank21_address);
 
-
-        } catch(Exception e) {
+		} catch (Exception e) {
 			log.appendException(e);
 		}
     }
 
-    private static void addpointers(int start_address, int end_address, Program program, AddressSpace addressSpace) throws CodeUnitInsertionException, AddressOutOfBoundsException{
-        for(int address = start_address; address< end_address; address+=2){
-            DataUtilities.createData(program, addressSpace.getAddress(address), new Pointer16DataType(), 2, false, DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+	private static void addpointers(int start_address, int end_address, Program program, AddressSpace addressSpace)
+			throws CodeUnitInsertionException, AddressOutOfBoundsException {
+		for (int address_int = start_address; address_int < end_address; address_int += 2) {
+			Address address = addressSpace.getAddress(address_int);
+			DataUtilities.createData(program, address, new Pointer16DataType(), 2, false,
+					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
         }
     } 
 }

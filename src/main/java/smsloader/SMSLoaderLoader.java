@@ -66,7 +66,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 	public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
 		List<LoadSpec> loadSpecs = new ArrayList<>();
 		
-		RomHeader h = findHeader(provider);
+		RomHeader h = RomHeader.findHeader(provider);
 		if(h != null) loadSpecs.add(new LoadSpec(this, 0, new LanguageCompilerSpecPair("z80:LE:16:default", "default"), true));
 		return loadSpecs;
 	}
@@ -128,7 +128,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 			int bank_count = 32;
 			EnumDataType bank_enum = new EnumDataType("BankNumber", 1/*(int)Math.ceil(Math.log(bank_count)/Math.log(2))*//*1,2,4,8*/);
 			for(int i=/*0*/3; i < bank_count; i++){
-				String bank_string = String.format("bank_%02d",i);
+				String bank_string = String.format("bank_%02d", i);
 				bank_enum.add(bank_string, i);
 				InputStream stream = provider.getInputStream(0x4000 * i);
 				Address address = ram.getAddress(0x8000);;
@@ -177,7 +177,10 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				"	$fffe	1 ($4000-$7fff)" + newLine +
 				"	$ffff	2 ($8000-$bfff)" + newLine +
 				"https://www.smspower.org/Development/Mappers",
-			"program", false/*R*/, true/*W*/, false/*X*/, log);
+				"program",
+				false/*R*/, true/*W*/, false/*X*/,
+				log
+			);
 
 			api.createLabel(ram.getAddress(0xfffc), "ControlRegister", true);
 			StructureDataType control_register_type = new StructureDataType("ControlRegisterType", 0);
@@ -357,7 +360,7 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 
 		String default_product_code = "";
 		try {
-			RomHeader h = findHeader(provider);
+			RomHeader h = RomHeader.findHeader(provider);
 			default_product_code = String.format("%x", h.productCode());
 		} catch(Exception e) {}
 		list.add(new Option(OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, Loader.COMMAND_LINE_ARG_PREFIX + "-overrideProductCode"));
@@ -395,30 +398,6 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 		if(superError != null) validationErrorStr.add( superError );
 		if (validationErrorStr.size() > 0) {
 			return validationErrorStr.stream().filter(str -> str!=null).collect(Collectors.joining("\r\n"));
-		}
-		return null;
-	}
-	
-	private RomHeader findHeader(ByteProvider provider) throws IOException {
-		// Validate this is a proper SMS/GG file by looking for the header
-		
-		// The 16-byte SMS/GG header can be found at one these offsets within the file
-		long headerOffsets[] = {0x1ff0, 0x3ff0, 0x7ff0};
-		long sizeOfHeader = 16;
-		String signature = "TMR SEGA";
-		
-		for(int i = 0; i < headerOffsets.length; i++) {
-			
-			if(provider.length() < headerOffsets[i] + sizeOfHeader) {
-				break;
-			}
-			
-			// the first 8 bytes of header are a signature
-			byte sig[] = provider.readBytes(headerOffsets[i], 8);
-			if(Arrays.equals(sig, signature.getBytes())) {
-				// found the SMS/GG header, this is a valid format
-				return new RomHeader(provider.readBytes(headerOffsets[i]+8+2, 5));
-			}			
 		}
 		return null;
 	}
