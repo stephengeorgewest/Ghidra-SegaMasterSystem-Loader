@@ -384,7 +384,8 @@ public class PhantasyStar {
 			AddressSpace bank06_address = api.getAddressFactory().getAddressSpace("bank_06");
 			addpointers(0x6E75, 0x6E8B, program, bank06_address);
             
-			ArrayDataType bank_address_mapping_array2 = new ArrayDataType(bank_address_map_set, (0x7143 - 0x705f) / 3,
+			//TODO: map bank references
+			ArrayDataType bank_address_mapping_array2 = new ArrayDataType(bank_address_map, (0x7143 - 0x705f) / 3,
 					1);
 			DataUtilities.createData(program, ram.getAddress(0x705F), bank_address_mapping_array2, 1, false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
