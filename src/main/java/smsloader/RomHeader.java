@@ -4,12 +4,29 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import ghidra.app.util.bin.ByteProvider;
+import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryAccessException;
 
 public class RomHeader {
 
 	private byte[] bytes;
 
+	public RomHeader(Program program) throws MemoryAccessException, AddressOutOfBoundsException, IllegalArgumentException {
+		byte[] bytes = new byte[5];
+		program.getMemory().getBytes(
+			program.getAddressFactory().getDefaultAddressSpace().getAddress(0x7ffa),
+			bytes
+		);
+
+		setBytes(bytes);
+	}
+
 	public RomHeader(byte[] bytes) throws IllegalArgumentException {
+		setBytes(bytes);
+	}
+
+	private void setBytes(byte[] bytes) throws IllegalArgumentException {
 		if (bytes.length != 5) {
 			throw new IllegalArgumentException("bytes wrong size");
 		}

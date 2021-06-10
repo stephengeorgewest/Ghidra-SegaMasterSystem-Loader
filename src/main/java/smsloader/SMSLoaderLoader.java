@@ -50,11 +50,6 @@ import ghidra.program.flatapi.FlatProgramAPI;
  * TODO: Provide class-level documentation that describes what this loader does.
  */
 public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
-	private static final String OPTION_APPLY_ROM_DATA = "Apply Rom Specific Data";
-	private static final String OPTION_IGNORE_CHECKSUM = "Ignore Rom Header Checksum";
-	private static final String OPTION_IGNORE_VERSION = "Ignore Rom Header Version Number";
-	private static final String OPTION_OVERRIDE_PRODUCT = "Override Rom Header Product Code 0x";
-
 	@Override
 	public String getName() {
 
@@ -317,28 +312,26 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 				Object value = o.getValue();
 				if(value == null) continue;
 				switch(o.getName()){
-					case OPTION_APPLY_ROM_DATA: apply_rom_data = (boolean)value; break;
-					case OPTION_IGNORE_CHECKSUM: ignore_checksum = (boolean)value; break;
-					case OPTION_IGNORE_VERSION: ignore_version = (boolean)value; break;
-					case OPTION_OVERRIDE_PRODUCT: override_product_version = Integer.parseInt((String)value,16);
+					case Constants.OPTION_APPLY_ROM_DATA: apply_rom_data = (boolean)value; break;
+					case Constants.OPTION_IGNORE_CHECKSUM: ignore_checksum = (boolean)value; break;
+					case Constants.OPTION_IGNORE_VERSION: ignore_version = (boolean)value; break;
+					case Constants.OPTION_OVERRIDE_PRODUCT: override_product_version = Integer.parseInt((String)value,16);
 				}
 			}
 
-			byte[] bytes = new byte[5];
-			memory.getBytes(ram.getAddress(0x7ffa), bytes);
-
-			RomHeader rom_header = new RomHeader(
-				bytes
-			);
+			RomHeader rom_header = new RomHeader(program);
 
 			log.appendMsg(rom_header.toString());
 
 			if(apply_rom_data){
 				/*EAD8, 9500, 02 specific */
-				PhantasyStar.load(program, rom_header, memory, ram, io, monitor, log,
-				ignore_checksum,
-				ignore_version,
-				override_product_version);
+				PhantasyStar.load(
+					provider, loadSpec, options, program, monitor, log,
+					rom_header, memory, ram, io,
+					ignore_checksum,
+					ignore_version,
+					override_product_version
+				);
 			}
 		} catch(Exception e) {
 			log.appendException(e);
@@ -354,16 +347,16 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 	) {
 		List<Option> list = super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram);
 
-		list.add(new Option(OPTION_APPLY_ROM_DATA, true, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-applyRomData"));
-		list.add(new Option(OPTION_IGNORE_CHECKSUM, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomChecksum"));
-		list.add(new Option(OPTION_IGNORE_VERSION, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomVersion"));
+		list.add(new Option(Constants.OPTION_APPLY_ROM_DATA, true, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-applyRomData"));
+		list.add(new Option(Constants.OPTION_IGNORE_CHECKSUM, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomChecksum"));
+		list.add(new Option(Constants.OPTION_IGNORE_VERSION, false, Boolean.class, Loader.COMMAND_LINE_ARG_PREFIX + "-ignoreRomVersion"));
 
 		String default_product_code = "";
 		try {
 			RomHeader h = RomHeader.findHeader(provider);
 			default_product_code = String.format("%x", h.productCode());
 		} catch(Exception e) {}
-		list.add(new Option(OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, Loader.COMMAND_LINE_ARG_PREFIX + "-overrideProductCode"));
+		list.add(new Option(Constants.OPTION_OVERRIDE_PRODUCT, default_product_code, String.class, Loader.COMMAND_LINE_ARG_PREFIX + "-overrideProductCode"));
 
 		return list;
 	}
@@ -374,12 +367,12 @@ public class SMSLoaderLoader extends AbstractLibrarySupportLoader {
 		if (options != null) {
 			for (Option option : options) {
 				String name = option.getName();
-				if (name.equals(OPTION_APPLY_ROM_DATA) || name.equals(OPTION_IGNORE_CHECKSUM) || name.equals(OPTION_IGNORE_VERSION)) {
+				if (name.equals(Constants.OPTION_APPLY_ROM_DATA) || name.equals(Constants.OPTION_IGNORE_CHECKSUM) || name.equals(Constants.OPTION_IGNORE_VERSION)) {
 					if (!Boolean.class.isAssignableFrom(option.getValueClass())) {
 						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
 					}
 				}
-				else if (name.equals(OPTION_OVERRIDE_PRODUCT)) {
+				else if (name.equals(Constants.OPTION_OVERRIDE_PRODUCT)) {
 					if (!String.class.isAssignableFrom(option.getValueClass())) {
 						validationErrorStr.add("Invalid type for option: " + name + " - " + option.getValueClass());
 					}

@@ -1,6 +1,11 @@
 package smsloader.rom;
 
+import java.util.List;
+
+import ghidra.app.util.Option;
+import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.app.util.opinion.LoadSpec;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
@@ -24,16 +29,46 @@ import ghidra.util.task.TaskMonitor;
 import smsloader.RomHeader;
 
 public class PhantasyStar {
-	public static void added(Program program, AddressSetView addressSetView, TaskMonitor monitor, MessageLog log){
-		log.appendMsg("'Analyzing' Phantasy Star");
+	public static boolean added(
+		Program program,
+		AddressSetView addressSetView,
+		TaskMonitor monitor,
+		MessageLog log,
+		Boolean ignoreChecksum,
+		Boolean ignoreVersion,
+		int overrideProductCode
+	){
+		try {
+			RomHeader rom_header = new RomHeader(program);
+			if(!check(rom_header, ignoreChecksum, ignoreVersion, overrideProductCode)) return false;
+
+			log.appendMsg("'Analyzing' Phantasy Star");
+
+
+
+			return true;
+		} catch(Exception e) {
+			log.appendException(e);
+		}
+		return false;
 	}
 
-	public static void load(Program program, RomHeader rom_header, Memory memory, AddressSpace ram, AddressSpace io,
-			TaskMonitor monitor, MessageLog log, Boolean ignoreChecksum, Boolean ignoreVersion,
-			int overrideProductCode) {
-		if ((!ignoreChecksum && rom_header.checksum() != 0xEA38)
-				|| (rom_header.productCode() != 0x9500 && rom_header.productCode() != overrideProductCode)
-				|| (!ignoreVersion && rom_header.version() != 2)) {
+	public static void load(
+		ByteProvider provider,
+		LoadSpec loadSpec,
+		List<Option> options,
+		Program program,
+		TaskMonitor monitor,
+		MessageLog log,
+		RomHeader rom_header,
+		Memory memory,
+		AddressSpace ram,
+		AddressSpace io,
+		Boolean ignoreChecksum,
+		Boolean ignoreVersion,
+		int overrideProductCode
+	) {
+		if (check(rom_header, ignoreChecksum, ignoreVersion, overrideProductCode)) {
             return;
         }
         
@@ -958,5 +993,16 @@ public class PhantasyStar {
 			DataUtilities.createData(program, address, new Pointer16DataType(), 2, false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
         }
-    } 
+    }
+
+	private static boolean check(
+		RomHeader rom_header,
+		Boolean ignoreChecksum,
+		Boolean ignoreVersion,
+		int overrideProductCode
+	){
+		return (!ignoreChecksum && rom_header.checksum() != 0xEA38)
+				|| (rom_header.productCode() != 0x9500 && rom_header.productCode() != overrideProductCode)
+				|| (!ignoreVersion && rom_header.version() != 2);
+	}
 }

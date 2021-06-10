@@ -7,6 +7,7 @@ import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.framework.options.OptionType;
 import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressIterator;
@@ -32,8 +33,30 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.util.HelpLocation;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+import smsloader.rom.PhantasyStar;
 
 public class SegaMapperAnalyzer extends AbstractAnalyzer {
+
+	private static MapperOptions MAPPER_DEFAULT_OPTION = MapperOptions.SegaMapper;
+	private MapperOptions mapper = MAPPER_DEFAULT_OPTION;
+	private static final String OPTION_MAPPER = "Mapper";
+
+	private Boolean apply_rom_data = false;
+	private Boolean ignore_checksum = false;
+	private Boolean ignore_version = false;
+	private int override_product_version = -1;
+
+	public static enum MapperOptions {
+		SegaMapper(1),Codemasters(2),Korean(3),MSX_Nemesis(4),Janggun(5);
+		private int mapperOption;
+
+		MapperOptions(int mapperOption){
+			this.mapperOption = mapperOption;
+		}
+		public int getMapperOption() {
+			return this.mapperOption;
+		}
+	}
 
 	public SegaMapperAnalyzer() {
 		super("The Sega mapper", "https://www.smspower.org/Development/Mappers", AnalyzerType.INSTRUCTION_ANALYZER);
@@ -141,17 +164,17 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 				//         ram:03fe cd 07 04        CALL       FUN_ram_0407                                     undefined FUN_ram_0407()
 				// -->
 				//                 **************************************************************
-                //                 *                          FUNCTION                          *
-                //                 **************************************************************
-                //                 undefined FUN_ram_0407()
-                // undefined         A:1            <RETURN>
-                //                 FUN_ram_0407                                    XREF[1]:     ram:03fe(c)  
-                // ram:0407 7e              LD         A,(HL) ; LD A,(HL=>DAT_bank_16__bad8)
-                // ram:0408 23              INC        HL
-                // ram:0409 b7              OR         A
-                // ram:040a c8              RET        Z
-                // ram:040b 4f              LD         C,A
-                // ram:040c e6 7f           AND        0x7f
+				//                 *                          FUNCTION                          *
+				//                 **************************************************************
+				//                 undefined FUN_ram_0407()
+				// undefined         A:1            <RETURN>
+				//                 FUN_ram_0407                                    XREF[1]:     ram:03fe(c)  
+			// ram:0407 7e              LD         A,(HL) ; LD A,(HL=>DAT_bank_16__bad8)
+				// ram:0408 23              INC        HL
+				// ram:0409 b7              OR         A
+				// ram:040a c8              RET        Z
+				// ram:040b 4f              LD         C,A
+				// ram:040c e6 7f           AND        0x7f
 
 				int bank_num = -1;
 				int bank_select_address = -1;
@@ -266,6 +289,12 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 				add = inst.getAddress();
 			}
 		}
+		if(this.apply_rom_data) {
+			return PhantasyStar.added(
+				program, addressSetView, monitor, log,
+				ignore_checksum, ignore_version, override_product_version
+			);
+		}
 		return false;
 	}
 
@@ -301,7 +330,37 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 	public void registerOptions(Options options, Program program) {
 		// HelpLocation h = new HelpLocation(description,
 		// description);"https://www.smspower.org/Development/Mappers"
-		options.registerOption("Mapper", "Sega Mapper", null, "Sega Mapper");
+		// TODO: switch to dropdown to choose between mappers
+		options.registerOption(OPTION_MAPPER, MAPPER_DEFAULT_OPTION, null, "Sega Mapper");
+
+		options.registerOption(Constants.OPTION_APPLY_ROM_DATA, true, null, "");
+		options.registerOption(Constants.OPTION_IGNORE_CHECKSUM, false, null, "");
+		options.registerOption(Constants.OPTION_IGNORE_VERSION, false, null, "");
+		
+		String product_code_string = "0x0";
+		try{
+			RomHeader romHeader = new RomHeader(program);
+			product_code_string = String.format("0x%h", romHeader.productCode());
+		} catch (Exception e){ }
+		options.registerOption(Constants.OPTION_OVERRIDE_PRODUCT, product_code_string, null, "");
+	}
+
+	@Override
+	public void optionsChanged(Options options, Program program) {
+		String product_code_string = "0x0";
+		try{
+			RomHeader romHeader = new RomHeader(program);
+			product_code_string = String.format("0x%h", romHeader.productCode());
+		} catch (Exception e){ }
+		switch(options.getName()){
+			case OPTION_MAPPER: 
+				int value = options.getInt(OPTION_MAPPER, MAPPER_DEFAULT_OPTION.getMapperOption());
+				mapper = MapperOptions.values()[value]; break;
+			case Constants.OPTION_APPLY_ROM_DATA: apply_rom_data = options.getBoolean(Constants.OPTION_APPLY_ROM_DATA, false); break;
+			case Constants.OPTION_IGNORE_CHECKSUM: ignore_checksum = options.getBoolean(Constants.OPTION_IGNORE_CHECKSUM, false); break;
+			case Constants.OPTION_IGNORE_VERSION: ignore_version = options.getBoolean(Constants.OPTION_IGNORE_VERSION, false); break;
+			case Constants.OPTION_OVERRIDE_PRODUCT: override_product_version = Integer.parseInt((String)options.getString(Constants.OPTION_OVERRIDE_PRODUCT, product_code_string), 16);
+		}
 	}
 	
 	private static int getAddressString(Object op0) {
