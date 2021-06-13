@@ -22,13 +22,60 @@ import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.UnionDataType;
 import ghidra.program.model.data.WordDataType;
+import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
+import ghidra.program.model.symbol.RefType;
+import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.task.TaskMonitor;
 import smsloader.RomHeader;
 
 public class PhantasyStar {
+
+	public static boolean added(
+		Program program,
+		Address address,
+		TaskMonitor monitor,
+		MessageLog log,
+		Boolean ignoreChecksum,
+		Boolean ignoreVersion,
+		int overrideProductCode
+	) {
+		try {
+			RomHeader rom_header = new RomHeader(program);
+			if (check(rom_header, ignoreChecksum, ignoreVersion, overrideProductCode))
+				return false;
+
+			Instruction instruction = program.getListing().getInstructionAt(address);
+			String addressString = address.toString();
+			// log.appendMsg("'Analyzing' Phantasy Star AddressSetview " + addressString);
+
+			AddressSpace bank12_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", 12));
+			switch (addressString) {
+				case "ram:1cdf":
+					instruction.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA,
+							SourceType.DEFAULT);
+			}
+
+			return true;
+		} catch (Exception e) {
+			log.appendException(e);
+		}
+		return false;
+	}
+
+	/**
+	 * TODO: try to migrate all these to logic in smsanalyszer?
+	 * @param program
+	 * @param addressSetView
+	 * @param monitor
+	 * @param log
+	 * @param ignoreChecksum
+	 * @param ignoreVersion
+	 * @param overrideProductCode
+	 * @return
+	 */
 	public static boolean added(
 		Program program,
 		AddressSetView addressSetView,
@@ -37,17 +84,44 @@ public class PhantasyStar {
 		Boolean ignoreChecksum,
 		Boolean ignoreVersion,
 		int overrideProductCode
-	){
+	) {
 		try {
 			RomHeader rom_header = new RomHeader(program);
-			if(!check(rom_header, ignoreChecksum, ignoreVersion, overrideProductCode)) return false;
+			if (check(rom_header, ignoreChecksum, ignoreVersion, overrideProductCode))
+				return false;
 
-			log.appendMsg("'Analyzing' Phantasy Star");
+			log.appendMsg("'Analyzing' Phantasy Star AddressSetview");
 
+			FlatProgramAPI api = new FlatProgramAPI(program, monitor);
+			AddressSpace ram = api.getAddressFactory().getAddressSpace("ram");
 
+			AddressSpace bank12_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", 12));
+
+			// 		LAB_ram_0679                                    XREF[1]:     ram:06ce(j)  
+			// ram:0679 21 45 be        LD         HL,0xbe45
+			// ram:067c cd cf 31        CALL       ShowDialogue_B12                                 undefined ShowDialogue_B12()
+			// ram:067f cd 19 2d        CALL       ShowYesNoPrompt                                  undefined ShowYesNoPrompt()
+			// ram:0682 20 41           JR         NZ,LAB_ram_06c5
+			// ram:0684 21 1b be        LD         HL,0xbe1b
+			// ram:0687 cd cf 31        CALL       ShowDialogue_B12                                 undefined ShowDialogue_B12()
+
+			program.getListing().getInstructionAt(ram.getAddress(0x1cdf))
+				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.DEFAULT);
+
+			program.getListing().getInstructionAt(ram.getAddress(0x1cdf))
+				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.DEFAULT);
+
+			program.getListing().getInstructionAt(ram.getAddress(0x1ce8))
+				.addOperandReference(1, bank12_space.getAddress(0xba82), RefType.DATA, SourceType.DEFAULT);
+			
+			program.getListing().getInstructionAt(ram.getAddress(0x1cf9))
+				.addOperandReference(1, bank12_space.getAddress(0xba93), RefType.DATA, SourceType.DEFAULT);
+
+			program.getListing().getInstructionAt(ram.getAddress(0x1d35))
+				.addOperandReference(1, bank12_space.getAddress(0xbaa3), RefType.DATA, SourceType.DEFAULT);
 
 			return true;
-		} catch(Exception e) {
+		} catch (Exception e) {
 			log.appendException(e);
 		}
 		return false;
@@ -222,15 +296,6 @@ public class PhantasyStar {
             api.createLabel(ram.getAddress(0x2168), "PlayerMenu_Item", true);
             api.createLabel(ram.getAddress(0x2839), "PlayerMenu_Search", true);
             api.createLabel(ram.getAddress(0x1cdf), "PlayerMenu_Save", true);
-            // TODO: 0xba62 pointer to bank 12, LABEL_B12_BA62
-            /**
-			 * PlayerMenu_Save XREF[1]: ram:1c9f(*) ram:1cdf 21 62 ba LD HL,0xBA62
-             */
-			// AddressSpace bank12_address =
-			// api.getAddressFactory().getAddressSpace("bank_12");
-            // null pointer?
-			// api.createMemoryReference(api.getDataAt(ram.getAddress(0x1ce0)),
-			// bank12_address.getAddress(0xBA62), RefType.DATA);
             
             api.createLabel(ram.getAddress(0x2d25), "WaitForButton1Or2", true);
              
