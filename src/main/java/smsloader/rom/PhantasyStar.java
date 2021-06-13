@@ -211,8 +211,9 @@ public class PhantasyStar {
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
 
             addpointers(0x1A66, 0x1AAE, program, ram);
-            // TODO: pointers to bank_12
-            addpointers(0x1B73, 0x1B87, program, ram);
+
+			AddressSpace bank12_address = api.getAddressFactory().getAddressSpace("bank_12");
+			addpointers(0x1B73, 0x1B87, program, bank12_address);
             
             api.createLabel(ram.getAddress(0x1c97), "PlayerMenu_OptionTbl", true);
             addpointers(0x1c97, 0x1ca1, program, ram);
@@ -904,7 +905,6 @@ public class PhantasyStar {
             /**
              * Bank 12, sound driver and dialog.
              */
-            AddressSpace bank12_address = api.getAddressFactory().getAddressSpace("bank_12");
             // TODO: fix up references, analyzer?
             // find all set bank and 
             // api.createMemoryReference​(new Data(), bank12_address.getAddress(0x8000), RefType.UNCONDITIONAL_JUMP);
