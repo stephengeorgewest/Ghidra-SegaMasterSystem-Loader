@@ -102,6 +102,14 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 			Instruction inst = program.getListing().getInstructionAt(ar.getMinAddress());
 			Address add = inst.getAddress();
 			while (inst != null && add.subtract(ar.getMinAddress()) >= 0 && ar.getMaxAddress().subtract(add) >= 0) {
+				
+				if(this.apply_rom_data) {
+					PhantasyStar.added(
+						program, add, monitor, log,
+						ignore_checksum, ignore_version, override_product_version
+					);
+				}
+
 				String add_str = add.toString(false);
 				int add_int = Integer.parseInt(add_str, 16);
 				// if not a call, or has no fallthru
@@ -282,11 +290,14 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 						inst.removeOperandReference(0, aa);
 					} /* else { */
 					inst.addOperandReference(0, a, RefType.UNCONDITIONAL_JUMP, SourceType.DEFAULT);
+					// clear flow and repair?
 					/* } */
 					// inst.addOperandReference(0, null, null, null)
 				}
 				inst = inst.getNext();
-				add = inst.getAddress();
+				if(inst != null) {
+					add = inst.getAddress();
+				}
 			}
 		}
 		if(this.apply_rom_data) {
@@ -295,7 +306,7 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 				ignore_checksum, ignore_version, override_product_version
 			);
 		}
-		return false;
+		return true;
 	}
 
 	@Override
