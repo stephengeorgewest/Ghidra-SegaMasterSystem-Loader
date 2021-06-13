@@ -337,30 +337,32 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 		options.registerOption(Constants.OPTION_IGNORE_CHECKSUM, false, null, "");
 		options.registerOption(Constants.OPTION_IGNORE_VERSION, false, null, "");
 		
-		String product_code_string = "0x0";
+		String product_code_string = "0";
 		try{
 			RomHeader romHeader = new RomHeader(program);
-			product_code_string = String.format("0x%h", romHeader.productCode());
+			product_code_string = String.format("%h", romHeader.productCode());
 		} catch (Exception e){ }
 		options.registerOption(Constants.OPTION_OVERRIDE_PRODUCT, product_code_string, null, "");
 	}
 
 	@Override
 	public void optionsChanged(Options options, Program program) {
-		String product_code_string = "0x0";
+		String product_code_default_string = "0";
 		try{
 			RomHeader romHeader = new RomHeader(program);
-			product_code_string = String.format("0x%h", romHeader.productCode());
+			product_code_default_string = String.format("%h", romHeader.productCode());
 		} catch (Exception e){ }
-		switch(options.getName()){
-			case OPTION_MAPPER: 
-				int value = options.getInt(OPTION_MAPPER, MAPPER_DEFAULT_OPTION.getMapperOption());
-				mapper = MapperOptions.values()[value]; break;
-			case Constants.OPTION_APPLY_ROM_DATA: apply_rom_data = options.getBoolean(Constants.OPTION_APPLY_ROM_DATA, false); break;
-			case Constants.OPTION_IGNORE_CHECKSUM: ignore_checksum = options.getBoolean(Constants.OPTION_IGNORE_CHECKSUM, false); break;
-			case Constants.OPTION_IGNORE_VERSION: ignore_version = options.getBoolean(Constants.OPTION_IGNORE_VERSION, false); break;
-			case Constants.OPTION_OVERRIDE_PRODUCT: override_product_version = Integer.parseInt((String)options.getString(Constants.OPTION_OVERRIDE_PRODUCT, product_code_string), 16);
-		}
+		
+		mapper = options.getEnum(OPTION_MAPPER, MAPPER_DEFAULT_OPTION);
+		apply_rom_data = options.getBoolean(Constants.OPTION_APPLY_ROM_DATA, true);
+		ignore_checksum = options.getBoolean(Constants.OPTION_IGNORE_CHECKSUM, false);
+		ignore_version = options.getBoolean(Constants.OPTION_IGNORE_VERSION, false);
+		String product_code_string_value = options.getString(Constants.OPTION_OVERRIDE_PRODUCT, product_code_default_string);
+		int product_code_int = -1;
+		try {
+			product_code_int = Integer.parseInt(product_code_string_value, 16);
+		} catch (Exception e) {}
+		override_product_version = product_code_int;
 	}
 	
 	private static int getAddressString(Object op0) {
