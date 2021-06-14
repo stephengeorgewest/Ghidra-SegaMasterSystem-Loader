@@ -22,10 +22,12 @@ import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.UnionDataType;
 import ghidra.program.model.data.WordDataType;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.symbol.RefType;
+import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.task.TaskMonitor;
@@ -389,7 +391,6 @@ public class PhantasyStar {
 
 			addpointers(0x3C2A, 0x3c52, program, ram);
 
-			/** All in different banks, set references manually? */
 			StructureDataType bank_address_map2 = new StructureDataType("BankAddressMap2", 0);
 			bank_address_map2.add(new ByteDataType(), 1, "BankNumber", "");
 			bank_address_map2.add(new Pointer16DataType(), 2, "Address", "");
@@ -401,27 +402,42 @@ public class PhantasyStar {
 			bank_address_map_set.add(bank_address_map2, 5, "Set1", "");
 			bank_address_map_set.add(bank_address_map, 3, "Set2", "");
 			ArrayDataType bank_address_map_set_array = new ArrayDataType(bank_address_map_set, 10, 1);
-			DataUtilities.createData(program, ram.getAddress(0x3DA6), bank_address_map_set_array, 1, false,
+			Data d_array = DataUtilities.createData(program, ram.getAddress(0x3DA6), bank_address_map_set_array, 1, false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			ReferenceManager refman = program.getReferenceManager();
+			for(int i = 0; i < d_array.getNumComponents(); i++) {
+				Data dd_set = d_array.getComponent(i);
+				for(int j = 0; j < dd_set.getNumComponents(); j++) {
+					Data ddd_address_map = dd_set.getComponent(j); // either map or map2
+					Data dddd_bank_number = ddd_address_map.getComponent(0);
+					int bank_number = dddd_bank_number.getByte(0); // <32 no mask needed
+					for(int k = 1; k < ddd_address_map.getNumComponents(); k ++) {
+						Data dddd_pointer = ddd_address_map.getComponent(k);
+						if(bank_number > 0){
+							Address address = dddd_pointer.getAddress();
+							byte[] bytes = dddd_pointer.getBytes();
+						
+							long bank_address_int = bytes[0]&0xff | ((bytes[1]<< 8)&0xff00);
+							AddressSpace bank_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", bank_number));
+							Address bank_address = bank_space.getAddress(bank_address_int);
+							refman.removeAllReferencesFrom(address);
+							refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.USER_DEFINED, 0);
+						}
+					}
+				}
+			}
 
 			/* Bank 1 */
 			
-			ArrayDataType bank_address2_mapping_array = new ArrayDataType(bank_address_map_set, 9, 1);
-			DataUtilities.createData(program, ram.getAddress(0x471E), bank_address2_mapping_array, 1, false,
+			// first byte looks like bank number.
+			// the first two bytes[0-1] of the first two sets look like addresses, but the rest don't
+			StructureDataType bank_byte4 = new StructureDataType("BankByte4", 0);
+			bank_byte4.add(new ByteDataType(), 1, "BankNumber", "");
+			bank_byte4.add(new ByteDataType(), 4, "bytes", "");
+			ArrayDataType bank_byte4_mapping_array = new ArrayDataType(bank_byte4, 9, 1);
+			DataUtilities.createData(program, ram.getAddress(0x471E), bank_byte4_mapping_array, 1, false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
-			// TODO: make refs automatically:
-			/*
-			 * if(bank_number > 0){ byte[] bytes = new byte[2]; try{
-			 * program.getMemory().getBytes(address, bytes); } catch (Exception e)
-			 * {log.appendException(e); continue;}
-			 * 
-			 * long bank_address_int = bytes[2]&0xff | ((bytes[3]<< 8)&0xff00); AddressSpace
-			 * bank_space = program.getAddressFactory()
-			 * .getAddressSpace(String.format("bank_%02d", bank_number)); Address
-			 * bank_address = bank_space.getAddress(bank_address_int);
-			 * program.getReferenceManager().addMemoryReference(address, bank_address,
-			 * RefType.DATA, SourceType.USER_DEFINED, 0); }
-			 */
+			
 			addpointers(0x4773, 0x48DF, program, ram);
 
 			api.createLabel(ram.getAddress(0x4F9B), "Purchase_Gas_Shield", true);
