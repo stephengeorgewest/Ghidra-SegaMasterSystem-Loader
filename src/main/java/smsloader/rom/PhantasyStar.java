@@ -187,10 +187,8 @@ public class PhantasyStar {
 			api.createLabel(ram.getAddress(0x05d6), "GameMode_" + game_mode_enum.getName(3), true);
 			api.createLabel(ram.getAddress(0x0a5c), "GameMode_" + game_mode_enum.getName(4), true);
 			api.createLabel(ram.getAddress(0x086F), "GameMode_" + game_mode_enum.getName(5), true);
-			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" +
-			// game_mode_enum.getName(6), true);
-			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" +
-			// game_mode_enum.getName(7), true);
+			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" + game_mode_enum.getName(6), true);
+			// api.createLabel(ram.getAddress(0x0B07), "GameMode_" + game_mode_enum.getName(7), true);
 			api.createLabel(ram.getAddress(0x0B6A), "GameMode_" + game_mode_enum.getName(8), true);
 			api.createLabel(ram.getAddress(0x0B08), "GameMode_" + game_mode_enum.getName(9), true);
 			api.createLabel(ram.getAddress(0x0F7D), "GameMode_" + game_mode_enum.getName(10), true);
@@ -202,10 +200,8 @@ public class PhantasyStar {
 			api.createLabel(ram.getAddress(0x4034), "GameMode_" + game_mode_enum.getName(16), true);
 			api.createLabel(ram.getAddress(0x03EB9), "GameMode_" + game_mode_enum.getName(17), true);
 			api.createLabel(ram.getAddress(0x0467C), "GameMode_" + game_mode_enum.getName(18), true);
-			// api.createLabel(ram.getAddress(0x467C), "GameMode_" +
-			// game_mode_enum.getName(19), true);
-			// api.createLabel(ram.getAddress(0x08587), "GameMode_" +
-			// game_mode_enum.getName(20), true);
+			// api.createLabel(ram.getAddress(0x467C), "GameMode_" + game_mode_enum.getName(19), true);
+			// api.createLabel(ram.getAddress(0x08587), "GameMode_" + game_mode_enum.getName(20), true);
 
 			api.createLabel(ram.getAddress(0x00E6), "GetPtrAndJump", true);
 			api.createLabel(ram.getAddress(0x00F1), "PauseLoop", true);
@@ -467,10 +463,27 @@ public class PhantasyStar {
 			AddressSpace bank06_address = api.getAddressFactory().getAddressSpace("bank_06");
 			addpointers(0x6E75, 0x6E8B, program, bank06_address);
 			
-			// TODO: map bank references
 			ArrayDataType bank_address_mapping_array2 = new ArrayDataType(bank_address_map, (0x7143 - 0x705f) / 3, 1);
-			DataUtilities.createData(program, ram.getAddress(0x705F), bank_address_mapping_array2, 1, false,
+			Data d1 = DataUtilities.createData(program, ram.getAddress(0x705F), bank_address_mapping_array2, 1, false,
 					DataUtilities.ClearDataMode.CHECK_FOR_SPACE);
+			for(int j = 0; j < d1.getNumComponents(); j++) {
+				Data ddd_address_map = d1.getComponent(j); // always map
+				Data dddd_bank_number = ddd_address_map.getComponent(0);
+				int bank_number = dddd_bank_number.getByte(0); // <32 no mask needed
+				for(int k = 1; k < ddd_address_map.getNumComponents(); k ++) {
+					Data dddd_pointer = ddd_address_map.getComponent(k);
+					if(bank_number > 0){
+						Address address = dddd_pointer.getAddress();
+						byte[] bytes = dddd_pointer.getBytes();
+					
+						long bank_address_int = bytes[0]&0xff | ((bytes[1]<< 8)&0xff00);
+						AddressSpace bank_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", bank_number));
+						Address bank_address = bank_space.getAddress(bank_address_int);
+						refman.removeAllReferencesFrom(address);
+						refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.USER_DEFINED, 0);
+					}
+				}
+			}
 
 			api.createLabel(ram.getAddress(0x7afd), "FadeOut", true);
 			api.createLabel(ram.getAddress(0x7b05), "FadeOut2", true);
@@ -984,11 +997,7 @@ public class PhantasyStar {
 			/**
 			 * Bank 12, sound driver and dialog.
 			 */
-			// TODO: fix up references, analyzer?
-			// find all set bank and 
-			// api.createMemoryReference​(new Data(), bank12_address.getAddress(0x8000), RefType.UNCONDITIONAL_JUMP);
 
-			// MemoryBlock bank_12 = memory.getBlock("bank_12");
 			api.createLabel(bank12_address.getAddress(0x8000), "Snd_InitDriver", true);
 			api.createLabel(bank12_address.getAddress(0x8043), "Snd_UpdateAll", true);
 			api.createLabel(bank12_address.getAddress(0x801f), "Snd_SilencePSG", true);
@@ -1017,7 +1026,7 @@ public class PhantasyStar {
 			api.createLabel(bank12_address.getAddress(0xB108), "EnemyDodges", true);
 			api.createLabel(bank12_address.getAddress(0xB118), "CurrentCharacterDodges", true);
 			api.createLabel(bank12_address.getAddress(0xba62), "InProgress", true);
-			// TODO: analyzer?
+			// TODO: Dialogue_Terminator65 string analyzer.
 
 			/* Bank 15 */
 			AddressSpace bank15_address = api.getAddressFactory().getAddressSpace("bank_15");
