@@ -289,7 +289,7 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 						Address aa = r.getToAddress();
 						inst.removeOperandReference(0, aa);
 					} /* else { */
-					inst.addOperandReference(0, a, RefType.UNCONDITIONAL_JUMP, SourceType.DEFAULT);
+					inst.addOperandReference(0, a, RefType.UNCONDITIONAL_JUMP, SourceType.ANALYSIS);
 					// clear flow and repair?
 					/* } */
 					// inst.addOperandReference(0, null, null, null)

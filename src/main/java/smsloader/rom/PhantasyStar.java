@@ -57,7 +57,7 @@ public class PhantasyStar {
 			switch (addressString) {
 				case "ram:1cdf":
 					instruction.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA,
-							SourceType.DEFAULT);
+							SourceType.IMPORTED);
 			}
 
 			return true;
@@ -108,19 +108,19 @@ public class PhantasyStar {
 			// ram:0687 cd cf 31        CALL       ShowDialogue_B12                                 undefined ShowDialogue_B12()
 	
 			program.getListing().getInstructionAt(ram.getAddress(0x1cdf))
-				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.DEFAULT);
+				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.IMPORTED);
 			
 			program.getListing().getInstructionAt(ram.getAddress(0x1cdf))
-				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.DEFAULT);
+				.addOperandReference(1, bank12_space.getAddress(0xba62), RefType.DATA, SourceType.IMPORTED);
 			
 			program.getListing().getInstructionAt(ram.getAddress(0x1ce8))
-				.addOperandReference(1, bank12_space.getAddress(0xba82), RefType.DATA, SourceType.DEFAULT);
+				.addOperandReference(1, bank12_space.getAddress(0xba82), RefType.DATA, SourceType.IMPORTED);
 			
 			program.getListing().getInstructionAt(ram.getAddress(0x1cf9))
-				.addOperandReference(1, bank12_space.getAddress(0xba93), RefType.DATA, SourceType.DEFAULT);
+				.addOperandReference(1, bank12_space.getAddress(0xba93), RefType.DATA, SourceType.IMPORTED);
 
 			program.getListing().getInstructionAt(ram.getAddress(0x1d35))
-				.addOperandReference(1, bank12_space.getAddress(0xbaa3), RefType.DATA, SourceType.DEFAULT);
+				.addOperandReference(1, bank12_space.getAddress(0xbaa3), RefType.DATA, SourceType.IMPORTED);
 
 			return true;
 		} catch (Exception e) {
@@ -417,7 +417,7 @@ public class PhantasyStar {
 							AddressSpace bank_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", bank_number));
 							Address bank_address = bank_space.getAddress(bank_address_int);
 							refman.removeAllReferencesFrom(address);
-							refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.USER_DEFINED, 0);
+							refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.IMPORTED, 0);
 						}
 					}
 				}
@@ -480,7 +480,7 @@ public class PhantasyStar {
 						AddressSpace bank_space = program.getAddressFactory().getAddressSpace(String.format("bank_%02d", bank_number));
 						Address bank_address = bank_space.getAddress(bank_address_int);
 						refman.removeAllReferencesFrom(address);
-						refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.USER_DEFINED, 0);
+						refman.addMemoryReference(address, bank_address, RefType.DATA, SourceType.IMPORTED, 0);
 					}
 				}
 			}
