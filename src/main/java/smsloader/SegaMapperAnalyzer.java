@@ -100,6 +100,9 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 		// ram:6b8d] [ram:7b05, ram:7b17] ]
 		for (AddressRange ar : addressSetView) {
 			Instruction inst = program.getListing().getInstructionAt(ar.getMinAddress());
+			if(inst == null) {
+				continue;
+			}
 			Address add = inst.getAddress();
 			while (inst != null && add.subtract(ar.getMinAddress()) >= 0 && ar.getMaxAddress().subtract(add) >= 0) {
 				
@@ -168,7 +171,21 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 				// ram:0664 21 d8 ba        LD         HL,0xbad8
 				// ram:0667 11 00 58        LD         DE,0x5800
 				// ram:066a cd fa 03        CALL       FUN_ram_03fa                                     undefined FUN_ram_03fa()
-				//  -->...
+				//  --- OR ---
+				// ram:66d1 36 10           LD         (HL=>BankSelect[2]),0x10
+				// ram:66d3 21 58 bd        LD         HL,0xbd58
+				// ram:66d6 11 00 7e        LD         DE,0x7e00
+				// ram:66d9 cd fa 03        CALL       FUN_ram_03fa                                     undefined FUN_ram_03fa()		
+				//  --- OR --- 
+				// ram:0662 36 10           LD         (HL=>BankSelect[2]),0x10
+				// ram:0664 21 d8 ba        LD         HL,0xbad8
+				// ram:0667 11 00 58        LD         DE,0x5800
+				// ram:066a cd fa 03        CALL       FUN_ram_03fa                                     undefined FUN_ram_03fa()
+				// --- OR even funner, load the bank number from memory somewhere---
+				// ram:61e4 32 ff ff        LD         (BankSelect[2]),A
+				// ram:61e7 11 00 60        LD         DE,0x6000
+				// ram:61ea cd fa 03        CALL       FUN_ram_03fa                                     undefined FUN_ram_03fa()
+				// --> ... which calls 0407
 				//         ram:03fe cd 07 04        CALL       FUN_ram_0407                                     undefined FUN_ram_0407()
 				// -->
 				//                 **************************************************************
@@ -177,7 +194,7 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 				//                 undefined FUN_ram_0407()
 				// undefined         A:1            <RETURN>
 				//                 FUN_ram_0407                                    XREF[1]:     ram:03fe(c)  
-			// ram:0407 7e              LD         A,(HL) ; LD A,(HL=>DAT_bank_16__bad8)
+				// ram:0407 7e              LD         A,(HL) ; LD A,(HL=>DAT_bank_16__bad8)
 				// ram:0408 23              INC        HL
 				// ram:0409 b7              OR         A
 				// ram:040a c8              RET        Z
