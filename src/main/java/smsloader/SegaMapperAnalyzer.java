@@ -2,6 +2,10 @@ package smsloader;
 
 import java.util.List;
 
+import ghidra.app.plugin.core.analysis.AnalysisBackgroundCommand;
+import ghidra.app.plugin.core.analysis.AnalysisScheduler;
+import ghidra.app.plugin.core.analysis.AnalysisTask;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.processors.generic.Operand;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
@@ -9,6 +13,7 @@ import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.options.OptionType;
 import ghidra.framework.options.Options;
+import ghidra.framework.plugintool.mgr.ToolTaskManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressIterator;
 import ghidra.program.model.address.AddressRange;
@@ -91,7 +96,7 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView addressSetView, TaskMonitor monitor, MessageLog log)
 			throws CancelledException {
 
-		monitor.checkCanceled();
+		monitor.checkCancelled();
 
 		// TODO: loop through all addresses eg
 		// [[ram:07da, ram:0806] [ram:0847, ram:086e] ]
@@ -160,7 +165,18 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 						int op_type = inst.getOperandType(1);
 						if(OperandType.isAddress(op_type)) {
 							Object op1 = inst.getOpObjects(1)[0];
-							targetAddress = getAddressString(op1);
+							String address_string = "0";
+							if(op1 instanceof Address) {
+								Address op0_address = (Address) op1;
+								address_string = op0_address.toString(false);
+							}
+							else if(op1 instanceof Scalar){
+								Scalar op0_scalar = (Scalar) op1;
+								String scalar_string = op0_scalar.toString();//"0xba62"
+								String[] s = scalar_string.split("x");
+								address_string = s[1];
+							}
+							targetAddress = Integer.parseInt(address_string, 16);
 						}
 					}
 				}
@@ -392,11 +408,4 @@ public class SegaMapperAnalyzer extends AbstractAnalyzer {
 		} catch (Exception e) {}
 		override_product_version = product_code_int;
 	}
-	
-	private static int getAddressString(Object op0) {
-		Address op0_address = (Address) op0;
-		String address_string = op0_address.toString(false);
-		return Integer.parseInt(address_string, 16);
-	}
-
 }
